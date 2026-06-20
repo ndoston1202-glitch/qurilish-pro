@@ -431,12 +431,34 @@ function kassaMahsulotKorsatish(royxat) {
   const grid = document.getElementById('kassaMahsulotGrid');
   if (!royxat.length) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>Topilmadi</p></div>'; return; }
   grid.innerHTML = royxat.map(m => `
-    <div class="mahsulot-karta ${m.miqdor<=0?'kam':''}" onclick="chekGaQosh(${m.id})">
-      ${m.rasm ? `<img src="${m.rasm}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-bottom:6px">` : ''}
-      <h4>${m.nomi}</h4>
-      <div class="narxi">${formatSum(m.sotish_narxi)}</div>
-      <div class="miqdor">Mavjud: ${m.miqdor} ${m.birlik}</div>
-      ${m.miqdor<=0?'<div style="color:#ef4444;font-size:11px">⚠ Tugagan</div>':''}
+    <div class="mahsulot-karta ${m.miqdor<=0?'kam':''}" onclick="${m.miqdor>0?`chekGaQosh(${m.id})`:''}">
+      <!-- RASM -->
+      <div style="width:100%;height:100px;border-radius:8px;overflow:hidden;margin-bottom:8px;
+        background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        ${m.rasm
+          ? `<img src="${m.rasm}" style="width:100%;height:100%;object-fit:cover">`
+          : `<i class="fas fa-box fa-2x" style="color:#cbd5e1"></i>`}
+      </div>
+      <!-- KATEGORIYA -->
+      ${m.kategoriya_nomi ? `<div style="font-size:10px;color:#94a3b8;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.5px">${m.kategoriya_nomi}</div>` : ''}
+      <!-- NOMI -->
+      <h4 style="font-size:13px;font-weight:600;line-height:1.3;margin-bottom:4px">${m.nomi}</h4>
+      <!-- NARXI -->
+      <div class="narxi" style="font-size:15px;font-weight:700;color:#2563eb">${formatSum(m.sotish_narxi)}</div>
+      <!-- MIQDOR -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <div class="miqdor" style="font-size:11px;color:#64748b">
+          ${m.miqdor > 0
+            ? `<span style="color:#10b981">✓</span> ${m.miqdor} ${m.birlik}`
+            : `<span style="color:#ef4444">⚠ Tugagan</span>`}
+        </div>
+        ${m.miqdor > 0
+          ? `<div style="width:24px;height:24px;border-radius:50%;background:#2563eb;
+              display:flex;align-items:center;justify-content:center">
+              <i class="fas fa-plus" style="color:white;font-size:10px"></i>
+            </div>`
+          : ''}
+      </div>
     </div>`).join('');
 }
 
@@ -444,15 +466,35 @@ function kassaMahsulotJadvalKorsatish(royxat) {
   const grid = document.getElementById('kassaMahsulotGrid');
   if (!royxat.length) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>Topilmadi</p></div>'; return; }
   grid.innerHTML = `<div class="table-wrapper"><table>
-    <thead><tr><th>Nomi</th><th>Narxi</th><th>Mavjud</th><th></th></tr></thead>
+    <thead><tr><th>Rasm</th><th>Nomi</th><th>Narxi</th><th>Mavjud</th><th></th></tr></thead>
     <tbody>${royxat.map(m => `
-      <tr>
-        <td><b>${m.nomi}</b><br><small style="color:#64748b">${m.kategoriya_nomi||''}</small></td>
+      <tr style="${m.miqdor>0?'cursor:pointer':'opacity:0.6'}"
+        ${m.miqdor>0?`onclick="chekGaQosh(${m.id})"
+          onmouseover="this.style.background='#f0f9ff'"
+          onmouseout="this.style.background=''"`:''}>
+        <td>
+          <div style="width:40px;height:40px;border-radius:6px;overflow:hidden;
+            background:#f1f5f9;display:flex;align-items:center;justify-content:center">
+            ${m.rasm
+              ? `<img src="${m.rasm}" style="width:100%;height:100%;object-fit:cover">`
+              : `<i class="fas fa-box" style="color:#cbd5e1;font-size:16px"></i>`}
+          </div>
+        </td>
+        <td>
+          <b style="font-size:13px">${m.nomi}</b>
+          ${m.kategoriya_nomi ? `<br><small style="color:#94a3b8">${m.kategoriya_nomi}</small>` : ''}
+        </td>
         <td><b style="color:#2563eb">${formatSum(m.sotish_narxi)}</b></td>
-        <td>${m.miqdor} ${m.birlik}</td>
-        <td><button class="btn btn-primary btn-sm" onclick="chekGaQosh(${m.id})" ${m.miqdor<=0?'disabled':''}>
-          <i class="fas fa-plus"></i>
-        </button></td>
+        <td>
+          ${m.miqdor > 0
+            ? `<span style="color:#10b981;font-weight:600">${m.miqdor} ${m.birlik}</span>`
+            : `<span style="color:#ef4444;font-size:12px">Tugagan</span>`}
+        </td>
+        <td>
+          <button class="btn btn-primary btn-sm btn-icon" ${m.miqdor<=0?'disabled':''}>
+            <i class="fas fa-plus"></i>
+          </button>
+        </td>
       </tr>`).join('')}
     </tbody></table></div>`;
 }
