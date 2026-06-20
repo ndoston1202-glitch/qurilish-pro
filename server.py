@@ -1047,6 +1047,25 @@ O'zbek tilida batafsil javob ber."""
                 conn.commit()
                 return self.send_json({'muvaffaqiyat':True,'qoshildi':qoshildi,'xatolar':xatolar})
 
+            # BRENDLAR IMPORT
+            if path == '/api/import/brendlar':
+                csv_text = body.get('csv','')
+                if not csv_text: return self.send_error_json('CSV ma\'lumot yo\'q!')
+                reader = csv.DictReader(io.StringIO(csv_text))
+                qoshildi = 0; xatolar = []
+                for i, row in enumerate(reader, 2):
+                    nomi = (row.get('nomi') or row.get('Nomi') or '').strip()
+                    if not nomi: continue
+                    tavsif = (row.get('tavsif') or row.get('Tavsif') or '').strip()
+                    mavjud = conn.execute("SELECT id FROM brendlar WHERE LOWER(nomi)=LOWER(?)", (nomi,)).fetchone()
+                    if mavjud:
+                        xatolar.append(f"'{nomi}' allaqachon mavjud")
+                        continue
+                    conn.execute("INSERT INTO brendlar (nomi,tavsif) VALUES (?,?)", (nomi, tavsif))
+                    qoshildi += 1
+                conn.commit()
+                return self.send_json({'muvaffaqiyat':True,'qoshildi':qoshildi,'xatolar':xatolar})
+
             self.send_error_json('Topilmadi', 404)
         except Exception as e:
             self.send_error_json(str(e), 500)

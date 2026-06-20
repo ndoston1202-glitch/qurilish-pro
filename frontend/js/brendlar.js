@@ -5,9 +5,14 @@ async function brendlarYukla() {
     <div class="card">
       <div class="card-header">
         <h3><i class="fas fa-tag"></i> Brendlar</h3>
-        <button class="btn btn-primary" onclick="brendQosh()">
-          <i class="fas fa-plus"></i> Yangi brend
-        </button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="brendlarExcelImport()">
+            <i class="fas fa-file-excel"></i> Excel import
+          </button>
+          <button class="btn btn-primary" onclick="brendQosh()">
+            <i class="fas fa-plus"></i> Yangi brend
+          </button>
+        </div>
       </div>
       <div class="card-body" id="brendlarDiv">
         <div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
@@ -243,4 +248,81 @@ async function brendBatafsil(id, nomi) {
         </button>
       </div>`);
   } catch(e) { toast(e.message, 'error'); }
+}
+
+
+// ===== BRENDLAR EXCEL IMPORT =====
+function brendlarExcelImport() {
+  modalOch('📥 Brendlarni Excel/CSV orqali import', `
+    <div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:14px">
+        <div style="font-weight:600;margin-bottom:6px;color:#1d4ed8">
+          <i class="fas fa-download"></i> 1-qadam: Shablonni yuklab oling
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="brendShablonYukla()">
+          <i class="fas fa-file-csv"></i> CSV Shablon yuklab olish
+        </button>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-bottom:14px">
+        <div style="font-weight:600;margin-bottom:6px;color:#15803d">
+          <i class="fas fa-upload"></i> 2-qadam: To'ldirilgan faylni yuklang
+        </div>
+        <input type="file" id="brendCSVFayl" accept=".csv,.txt"
+          style="width:100%;padding:8px;border:2px dashed #e2e8f0;border-radius:8px;background:white"
+          onchange="csvFaylOqi(this,'brendCSVMatn')">
+      </div>
+      <div class="form-group">
+        <label style="font-weight:600">CSV mazmuni:</label>
+        <textarea id="brendCSVMatn" rows="5"
+          style="width:100%;font-family:monospace;font-size:12px;border:1px solid #e2e8f0;border-radius:8px;padding:8px"
+          placeholder="nomi,tavsif&#10;Knauf,Qurilish materiallari&#10;Makita,Asbob-uskunalar"></textarea>
+      </div>
+      <div class="modal-footer" style="padding:0">
+        <button class="btn btn-secondary" onclick="modalYop()">Bekor</button>
+        <button class="btn btn-success" onclick="brendCSVYukla()">
+          <i class="fas fa-upload"></i> Import qilish
+        </button>
+      </div>
+    </div>`);
+}
+
+function brendShablonYukla() {
+  const csv = 'nomi,tavsif\nKnauf,Qurilish materiallari\nMakita,Asbob-uskunalar\nKNAUF,Gips va tsement';
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'brendlar_shablon.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Shablon yuklandi!', 'success');
+}
+
+async function brendCSVYukla() {
+  const csv = document.getElementById('brendCSVMatn')?.value?.trim();
+  if (!csv) { toast('CSV matn bo\'sh!', 'warning'); return; }
+
+  const qatorlar = csv.split('\n').filter(q => q.trim());
+  // Sarlavha qatorini o'tkazib yuboramiz
+  const boshlanish = qatorlar[0].toLowerCase().includes('nomi') ? 1 : 0;
+
+  let qoshildi = 0; let xatolar = [];
+
+  for (let i = boshlanish; i < qatorlar.length; i++) {
+    const parts = qatorlar[i].split(',');
+    const nomi = parts[0]?.trim();
+    const tavsif = parts[1]?.trim() || '';
+    if (!nomi) continue;
+    try {
+      await apiPost('/brendlar', { nomi, tavsif });
+      qoshildi++;
+    } catch(e) {
+      xatolar.push(`"${nomi}": ${e.message}`);
+    }
+  }
+
+  modalYop();
+  toast(`✅ ${qoshildi} ta brend qo'shildi!`, 'success');
+  if (xatolar.length) {
+    setTimeout(() => toast(`⚠ ${xatolar.length} ta xato: ${xatolar[0]}`, 'warning'), 2000);
+  }
+  brendlarRoyxatYukla();
 }

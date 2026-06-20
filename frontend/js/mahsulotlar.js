@@ -314,7 +314,7 @@ function mahsulotFormKontent(m = null) {
             ${m && m.rasm ? `<button type="button" class="btn btn-danger btn-sm" style="margin-left:6px" onclick="rasmOchir()">
               <i class="fas fa-times"></i> O'chirish
             </button>` : ''}
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px">PNG, JPG, JPEG (max 1MB)</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px">PNG, JPG, JPEG (max 5MB)</div>
           </div>
         </div>
         <input type="hidden" name="rasm" id="rasmInput" value="${m ? (m.rasm || '') : ''}">
