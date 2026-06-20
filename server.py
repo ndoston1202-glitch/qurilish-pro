@@ -144,6 +144,13 @@ def init_db():
         izoh TEXT,
         sana TEXT DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS brendlar (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nomi TEXT NOT NULL UNIQUE,
+        tavsif TEXT,
+        rasm TEXT,
+        yaratilgan TEXT DEFAULT (datetime('now','localtime'))
+    );
     CREATE TABLE IF NOT EXISTS kassa_harakatlari (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tur TEXT NOT NULL,
@@ -190,6 +197,18 @@ def init_db():
 
     # v2: sotuvda_korinsin ustuni
     try: conn.execute("ALTER TABLE mahsulotlar ADD COLUMN sotuvda_korinsin INTEGER DEFAULT 1"); conn.commit()
+    except: pass
+    # v3: brend_id ustuni
+    try: conn.execute("ALTER TABLE mahsulotlar ADD COLUMN brend_id INTEGER"); conn.commit()
+    except: pass
+    # v4: brendlar jadvali
+    try:
+        conn.execute("""CREATE TABLE IF NOT EXISTS brendlar (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nomi TEXT NOT NULL UNIQUE, tavsif TEXT, rasm TEXT,
+            yaratilgan TEXT DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.commit()
     except: pass
 
     # v2: mijoz_id sotuvlarda
@@ -546,9 +565,22 @@ O'zbek tilida batafsil javob ber."""
                 rows = conn.execute("SELECT * FROM kategoriyalar ORDER BY nomi").fetchall()
                 return self.send_json(rows_to_list(rows))
 
+            # BRENDLAR
+            if path == '/api/brendlar':
+                rows = conn.execute("SELECT * FROM brendlar ORDER BY nomi").fetchall()
+                return self.send_json(rows_to_list(rows))
+
+            m = re.match(r'^/api/brendlar/(\d+)$', path)
+            if m:
+                row = conn.execute("SELECT * FROM brendlar WHERE id=?", (m.group(1),)).fetchone()
+                if not row: return self.send_error_json('Brend topilmadi', 404)
+                mah = rows_to_list(conn.execute("SELECT m.*,k.nomi as kategoriya_nomi FROM mahsulotlar m LEFT JOIN kategoriyalar k ON m.kategoriya_id=k.id WHERE m.brend_id=? AND m.faol=1 ORDER BY m.nomi", (m.group(1),)).fetchall())
+                d = row_to_dict(row); d['mahsulotlar'] = mah
+                return self.send_json(d)
+
             # MAHSULOTLAR
             if path == '/api/mahsulotlar':
-                sql = "SELECT m.*,k.nomi as kategoriya_nomi FROM mahsulotlar m LEFT JOIN kategoriyalar k ON m.kategoriya_id=k.id WHERE m.faol=1"
+                sql = "SELECT m.*,k.nomi as kategoriya_nomi,b.nomi as brend_nomi FROM mahsulotlar m LEFT JOIN kategoriyalar k ON m.kategoriya_id=k.id LEFT JOIN brendlar b ON m.brend_id=b.id WHERE m.faol=1"
                 params = []
                 if qp('qidiruv'):
                     sql += " AND (m.nomi LIKE ? OR m.shtrix_kod LIKE ?)"; params += [f"%{qp('qidiruv')}%"]*2
@@ -852,6 +884,14 @@ O'zbek tilida batafsil javob ber."""
                     conn.commit(); return self.send_json({'muvaffaqiyat':True,'id':r})
                 except: return self.send_error_json("Bu kategoriya allaqachon mavjud!")
 
+            if path == '/api/brendlar':
+                try:
+                    rasm = body.get('rasm')
+                    r = conn.execute("INSERT INTO brendlar (nomi,tavsif,rasm) VALUES (?,?,?)",
+                        (body['nomi'], body.get('tavsif',''), rasm)).lastrowid
+                    conn.commit(); return self.send_json({'muvaffaqiyat':True,'id':r})
+                except: return self.send_error_json("Bu brend allaqachon mavjud!")
+
             if path == '/api/mijozlar':
                 try:
                     r = conn.execute("INSERT INTO mijozlar (ism,familiya,telefon,manzil,izoh) VALUES (?,?,?,?,?)",
@@ -863,9 +903,9 @@ O'zbek tilida batafsil javob ber."""
                 try:
                     mavjud = conn.execute("SELECT id FROM mahsulotlar WHERE LOWER(nomi)=LOWER(?) AND faol=1", (body['nomi'],)).fetchone()
                     if mavjud: return self.send_error_json(f"'{body['nomi']}' nomli mahsulot allaqachon mavjud!")
-                    r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm,sotuvda_korinsin) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm,sotuvda_korinsin,brend_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                         (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('birlik','dona'),
-                         body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1))).lastrowid
+                         body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'))).lastrowid
                     # LOG: mahsulot qo'shildi
                     foydalanuvchi_id = body.get('foydalanuvchi_id')
                     fism = ''
@@ -1033,6 +1073,12 @@ O'zbek tilida batafsil javob ber."""
                 conn.execute("UPDATE kategoriyalar SET nomi=?,tavsif=? WHERE id=?", (body['nomi'],body.get('tavsif',''),m.group(1)))
                 conn.commit(); return self.send_json({'muvaffaqiyat':True})
 
+            m = re.match(r'^/api/brendlar/(\d+)$', path)
+            if m:
+                conn.execute("UPDATE brendlar SET nomi=?,tavsif=?,rasm=? WHERE id=?",
+                    (body['nomi'],body.get('tavsif',''),body.get('rasm'),m.group(1)))
+                conn.commit(); return self.send_json({'muvaffaqiyat':True})
+
             m = re.match(r'^/api/mijozlar/(\d+)$', path)
             if m:
                 conn.execute("UPDATE mijozlar SET ism=?,familiya=?,telefon=?,manzil=?,izoh=?,qarz=? WHERE id=?",
@@ -1042,8 +1088,8 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/mahsulotlar/(\d+)$', path)
             if m:
                 eski = conn.execute("SELECT * FROM mahsulotlar WHERE id=?", (m.group(1),)).fetchone()
-                conn.execute("UPDATE mahsulotlar SET nomi=?,kategoriya_id=?,shtrix_kod=?,birlik=?,kelish_narxi=?,sotish_narxi=?,miqdor=?,min_miqdor=?,tavsif=?,rasm=?,sotuvda_korinsin=?,yangilangan=datetime('now','localtime') WHERE id=?",
-                    (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('birlik','dona'),body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),m.group(1)))
+                conn.execute("UPDATE mahsulotlar SET nomi=?,kategoriya_id=?,shtrix_kod=?,birlik=?,kelish_narxi=?,sotish_narxi=?,miqdor=?,min_miqdor=?,tavsif=?,rasm=?,sotuvda_korinsin=?,brend_id=?,yangilangan=datetime('now','localtime') WHERE id=?",
+                    (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('birlik','dona'),body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'),m.group(1)))
                 # LOG: mahsulot tahrirlandi
                 foydalanuvchi_id = body.get('foydalanuvchi_id')
                 fism = ''
@@ -1081,6 +1127,11 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/kategoriyalar/(\d+)$', path)
             if m:
                 conn.execute("DELETE FROM kategoriyalar WHERE id=?", (m.group(1),)); conn.commit()
+                return self.send_json({'muvaffaqiyat':True})
+
+            m = re.match(r'^/api/brendlar/(\d+)$', path)
+            if m:
+                conn.execute("DELETE FROM brendlar WHERE id=?", (m.group(1),)); conn.commit()
                 return self.send_json({'muvaffaqiyat':True})
 
             m = re.match(r'^/api/mahsulotlar/(\d+)$', path)

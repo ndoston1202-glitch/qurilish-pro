@@ -436,7 +436,8 @@ function kassaMahsulotKorsatish(royxat) {
       <div style="width:100%;height:100px;border-radius:8px;overflow:hidden;margin-bottom:8px;
         background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         ${m.rasm
-          ? `<img src="${m.rasm}" style="width:100%;height:100%;object-fit:cover">`
+          ? `<img src="${m.rasm}" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in"
+              onclick="event.stopPropagation();rasmKattaKorsatish(this.src)" title="Kattalashtirish">`
           : `<i class="fas fa-box fa-2x" style="color:#cbd5e1"></i>`}
       </div>
       <!-- KATEGORIYA -->
@@ -476,7 +477,8 @@ function kassaMahsulotJadvalKorsatish(royxat) {
           <div style="width:40px;height:40px;border-radius:6px;overflow:hidden;
             background:#f1f5f9;display:flex;align-items:center;justify-content:center">
             ${m.rasm
-              ? `<img src="${m.rasm}" style="width:100%;height:100%;object-fit:cover">`
+              ? `<img src="${m.rasm}" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in"
+                  onclick="event.stopPropagation();rasmKattaKorsatish(this.src)">`
               : `<i class="fas fa-box" style="color:#cbd5e1;font-size:16px"></i>`}
           </div>
         </td>
@@ -816,4 +818,18 @@ async function qaytarishYakunla() {
     kassaMahsulotlar = await apiGet('/mahsulotlar');
     kassaMahsulotKorsatish(kassaMahsulotlar);
   } catch(e) { toast(e.message, 'error'); }
+}
+
+
+// Rasmni kattalashtirish (kassa va boshqa sahifalar uchun)
+function rasmKattaKorsatish(src) {
+  modalOch('🖼️ Rasm', `
+    <div style="text-align:center">
+      <img src="${src}"
+        style="max-width:100%;max-height:70vh;border-radius:10px;
+        box-shadow:0 4px 20px rgba(0,0,0,0.15);object-fit:contain">
+    </div>
+    <div class="modal-footer" style="padding:0;margin-top:12px">
+      <button class="btn btn-secondary" onclick="modalYop()">Yopish</button>
+    </div>`);
 }

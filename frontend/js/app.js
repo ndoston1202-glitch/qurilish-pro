@@ -80,6 +80,7 @@ function sahifaOch(nomi) {
     case 'ai': aiYukla(); break;
     case 'xodimlar': xodimlarYukla(); break;
     case 'mijozlar': mijozlarYukla(); break;
+    case 'brendlar': brendlarYukla(); break;
     case 'sozlamalar': sozlamalarYukla(); break;
   }
 }

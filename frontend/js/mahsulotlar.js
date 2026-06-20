@@ -206,13 +206,31 @@ function sahifaOtIndex(n) {
 // ===== QO'SHISH / TAHRIRLASH =====
 function mahsulotQosh() {
   modalOch('Yangi mahsulot qo\'shish', mahsulotFormKontent());
+  setTimeout(() => brendSelectYukla(null), 50);
 }
 
 async function mahsulotTahrir(id) {
   try {
     const m = await apiGet('/mahsulotlar/' + id);
     modalOch('Mahsulotni tahrirlash', mahsulotFormKontent(m));
+    brendSelectYukla(m.brend_id);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+async function brendSelectYukla(tanlangan_id) {
+  try {
+    const brendlar = await apiGet('/brendlar');
+    const sel = document.getElementById('brendSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Brendsiz —</option>';
+    brendlar.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = b.nomi;
+      if (tanlangan_id && b.id == tanlangan_id) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
 }
 
 function mahsulotFormKontent(m = null) {
@@ -234,6 +252,13 @@ function mahsulotFormKontent(m = null) {
             <option value="">— Tanlang —</option>${katOptions}
           </select>
         </div>
+        <div class="form-group">
+          <label>Brend</label>
+          <select name="brend_id" id="brendSelect">
+            <option value="">— Brendsiz —</option>
+          </select>
+        </div>
+      </div>
         <div class="form-group">
           <label>Birlik *</label>
           <select name="birlik">
@@ -346,6 +371,7 @@ async function mahsulotSaqlash(e, id) {
     tavsif: form.tavsif.value,
     rasm: document.getElementById('rasmInput')?.value || null,
     sotuvda_korinsin: form.sotuvda_korinsin?.checked ? 1 : 0,
+    brend_id: form.brend_id?.value || null,
     foydalanuvchi_id: joriyFoydalanuvchi?.id || null
   };
   try {
@@ -387,15 +413,36 @@ function toggleKorinishRang(checkbox) {
 function rasmTanlash(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 1024 * 1024) { toast('Rasm 1MB dan kichik bo\'lsin!', 'warning'); return; }
+  // 5MB limit
+  if (file.size > 5 * 1024 * 1024) {
+    toast('⚠️ Rasm 5MB dan kichik bo\'lsin!', 'warning');
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
     const base64 = e.target.result;
     document.getElementById('rasmInput').value = base64;
     const preview = document.getElementById('rasmPreview');
-    if (preview) preview.innerHTML = `<img src="${base64}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`;
+    if (preview) preview.innerHTML = `
+      <img src="${base64}"
+        style="width:100%;height:100%;object-fit:cover;border-radius:6px;cursor:zoom-in"
+        onclick="rasmKattaKorsatish(this.src)"
+        title="Kattalashtirish uchun bosing">`;
   };
   reader.readAsDataURL(file);
+}
+
+function rasmKattaKorsatish(src) {
+  modalOch('🖼️ Rasm', `
+    <div style="text-align:center">
+      <img src="${src}"
+        style="max-width:100%;max-height:70vh;border-radius:10px;
+        box-shadow:0 4px 20px rgba(0,0,0,0.15);object-fit:contain">
+    </div>
+    <div class="modal-footer" style="padding:0;margin-top:12px">
+      <button class="btn btn-secondary" onclick="modalYop()">Yopish</button>
+    </div>`);
 }
 
 function rasmOchir() {
