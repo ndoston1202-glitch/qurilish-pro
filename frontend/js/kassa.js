@@ -121,7 +121,7 @@ async function kassaYukla() {
     </div>`;
 
   try {
-    const [mahsulotlar, kategoriyalar] = await Promise.all([apiGet('/mahsulotlar'), apiGet('/kategoriyalar')]);
+    const [mahsulotlar, kategoriyalar] = await Promise.all([apiGet('/mahsulotlar?kassa=1'), apiGet('/kategoriyalar')]);
     kassaMahsulotlar = mahsulotlar;
     const sel = document.getElementById('kassaKat');
     kategoriyalar.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nomi}</option>`);
@@ -683,7 +683,7 @@ async function sotuvYakunla() {
     };
     kassaXotirasiniTozala();
     chekTozala();
-    kassaMahsulotlar = await apiGet('/mahsulotlar');
+    kassaMahsulotlar = await apiGet('/mahsulotlar?kassa=1');
     kassaMahsulotKorsatish(kassaMahsulotlar);
     tolovQatorlarniBoshlash();
     if (soz.avtomatChek !== false) chekChidir(r, snap);

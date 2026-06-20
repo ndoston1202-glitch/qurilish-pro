@@ -65,6 +65,7 @@ def init_db():
         kelish_narxi REAL NOT NULL DEFAULT 0, sotish_narxi REAL NOT NULL DEFAULT 0,
         miqdor REAL NOT NULL DEFAULT 0, min_miqdor REAL DEFAULT 5,
         tavsif TEXT, rasm TEXT,
+        sotuvda_korinsin INTEGER DEFAULT 1,
         yaratilgan TEXT DEFAULT (datetime('now','localtime')),
         yangilangan TEXT DEFAULT (datetime('now','localtime')), faol INTEGER DEFAULT 1,
         FOREIGN KEY (kategoriya_id) REFERENCES kategoriyalar(id)
@@ -185,6 +186,10 @@ def init_db():
 
     # v1: rasm ustuni
     try: conn.execute("ALTER TABLE mahsulotlar ADD COLUMN rasm TEXT"); conn.commit()
+    except: pass
+
+    # v2: sotuvda_korinsin ustuni
+    try: conn.execute("ALTER TABLE mahsulotlar ADD COLUMN sotuvda_korinsin INTEGER DEFAULT 1"); conn.commit()
     except: pass
 
     # v2: mijoz_id sotuvlarda
@@ -551,6 +556,9 @@ O'zbek tilida batafsil javob ber."""
                     sql += " AND m.kategoriya_id=?"; params.append(qp('kategoriya'))
                 if qp('kam_miqdor') == '1':
                     sql += " AND m.miqdor<=m.min_miqdor"
+                # Kassada faqat sotuvda ko'rinadigan mahsulotlar
+                if qp('kassa') == '1':
+                    sql += " AND m.sotuvda_korinsin=1"
                 sql += " ORDER BY m.nomi"
                 return self.send_json(rows_to_list(conn.execute(sql, params).fetchall()))
 
@@ -855,9 +863,9 @@ O'zbek tilida batafsil javob ber."""
                 try:
                     mavjud = conn.execute("SELECT id FROM mahsulotlar WHERE LOWER(nomi)=LOWER(?) AND faol=1", (body['nomi'],)).fetchone()
                     if mavjud: return self.send_error_json(f"'{body['nomi']}' nomli mahsulot allaqachon mavjud!")
-                    r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm,sotuvda_korinsin) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                         (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('birlik','dona'),
-                         body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'))).lastrowid
+                         body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1))).lastrowid
                     # LOG: mahsulot qo'shildi
                     foydalanuvchi_id = body.get('foydalanuvchi_id')
                     fism = ''
@@ -1034,8 +1042,8 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/mahsulotlar/(\d+)$', path)
             if m:
                 eski = conn.execute("SELECT * FROM mahsulotlar WHERE id=?", (m.group(1),)).fetchone()
-                conn.execute("UPDATE mahsulotlar SET nomi=?,kategoriya_id=?,shtrix_kod=?,birlik=?,kelish_narxi=?,sotish_narxi=?,miqdor=?,min_miqdor=?,tavsif=?,rasm=?,yangilangan=datetime('now','localtime') WHERE id=?",
-                    (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('birlik','dona'),body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),m.group(1)))
+                conn.execute("UPDATE mahsulotlar SET nomi=?,kategoriya_id=?,shtrix_kod=?,birlik=?,kelish_narxi=?,sotish_narxi=?,miqdor=?,min_miqdor=?,tavsif=?,rasm=?,sotuvda_korinsin=?,yangilangan=datetime('now','localtime') WHERE id=?",
+                    (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('birlik','dona'),body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),m.group(1)))
                 # LOG: mahsulot tahrirlandi
                 foydalanuvchi_id = body.get('foydalanuvchi_id')
                 fism = ''

@@ -140,7 +140,7 @@ function mahsulotlarKorsatish(royxat) {
           <tr>
             <th>#</th><th>Nomi</th><th>Kategoriya</th><th>Shtrix kod</th>
             <th>Birlik</th><th>Kelish narxi</th><th>Sotish narxi</th>
-            <th>Miqdor</th><th>Holat</th><th>Amallar</th>
+            <th>Miqdor</th><th>Holat</th><th>Sotuv</th><th>Amallar</th>
           </tr>
         </thead>
         <tbody>
@@ -168,6 +168,16 @@ function mahsulotlarKorsatish(royxat) {
                 <button class="btn btn-danger btn-sm btn-icon" title="O'chirish"
                   onclick="mahsulotOchir(${m.id},'${m.nomi.replace(/'/g,"\\'")}',${m.miqdor})">
                   <i class="fas fa-trash"></i></button>
+              </td>
+              <td>
+                <span onclick="sotuvKorinishToggle(${m.id},${m.sotuvda_korinsin},this)"
+                  style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
+                  border-radius:20px;font-size:12px;font-weight:600;transition:all 0.2s;
+                  background:${m.sotuvda_korinsin!==0?'#dcfce7':'#fee2e2'};
+                  color:${m.sotuvda_korinsin!==0?'#166534':'#991b1b'}">
+                  <i class="fas ${m.sotuvda_korinsin!==0?'fa-eye':'fa-eye-slash'}"></i>
+                  ${m.sotuvda_korinsin!==0?'Ko\'rinadi':'Yashirin'}
+                </span>
               </td>
             </tr>`).join('')}
         </tbody>
@@ -285,6 +295,35 @@ function mahsulotFormKontent(m = null) {
         <input type="hidden" name="rasm" id="rasmInput" value="${m ? (m.rasm || '') : ''}">
       </div>
 
+      <!-- SOTUVDA KO'RINISH TOGGLE -->
+      <div class="form-group">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          padding:12px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0">
+          <div>
+            <div style="font-weight:600;font-size:14px">
+              <i class="fas fa-eye" style="color:#2563eb;margin-right:6px"></i>
+              Sotuvda ko'rinsin
+            </div>
+            <div style="font-size:12px;color:#64748b;margin-top:2px">
+              O'chirilsa kassada ko'rinmaydi
+            </div>
+          </div>
+          <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer">
+            <input type="checkbox" name="sotuvda_korinsin" id="sotuvdaKorinsin"
+              ${!m || m.sotuvda_korinsin !== 0 ? 'checked' : ''}
+              style="opacity:0;width:0;height:0"
+              onchange="toggleKorinishRang(this)">
+            <span id="toggleSpan" style="position:absolute;top:0;left:0;right:0;bottom:0;
+              border-radius:34px;transition:0.3s;
+              background:${!m || m.sotuvda_korinsin !== 0 ? '#2563eb' : '#e2e8f0'}">
+              <span style="position:absolute;height:20px;width:20px;left:${!m || m.sotuvda_korinsin !== 0 ? '28px' : '4px'};
+                bottom:4px;background:white;border-radius:50%;transition:0.3s;
+                box-shadow:0 1px 3px rgba(0,0,0,0.3)" id="toggleCircle"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+
       <div class="modal-footer" style="padding:0;margin-top:10px">
         <button type="button" class="btn btn-secondary" onclick="modalYop()">Bekor</button>
         <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Saqlash</button>
@@ -306,6 +345,7 @@ async function mahsulotSaqlash(e, id) {
     shtrix_kod: form.shtrix_kod.value || null,
     tavsif: form.tavsif.value,
     rasm: document.getElementById('rasmInput')?.value || null,
+    sotuvda_korinsin: form.sotuvda_korinsin?.checked ? 1 : 0,
     foydalanuvchi_id: joriyFoydalanuvchi?.id || null
   };
   try {
@@ -317,6 +357,33 @@ async function mahsulotSaqlash(e, id) {
 }
 
 // ===== RASM FUNKSIYALARI =====
+// Jadvalda to'g'ridan-to'g'ri bosib toggle qilish
+async function sotuvKorinishToggle(id, joriyHolat, el) {
+  const yangi = joriyHolat !== 0 ? 0 : 1;
+  try {
+    const m = await apiGet('/mahsulotlar/' + id);
+    await apiPut('/mahsulotlar/' + id, { ...m, sotuvda_korinsin: yangi });
+    // Elementni yangilash
+    el.style.background = yangi ? '#dcfce7' : '#fee2e2';
+    el.style.color = yangi ? '#166534' : '#991b1b';
+    el.innerHTML = `<i class="fas ${yangi ? 'fa-eye' : 'fa-eye-slash'}"></i> ${yangi ? "Ko'rinadi" : 'Yashirin'}`;
+    el.setAttribute('onclick', `sotuvKorinishToggle(${id},${yangi},this)`);
+    toast(yangi ? '✅ Sotuvda ko\'rinadi' : '🔕 Sotuvdan yashirildi', yangi ? 'success' : 'warning');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function toggleKorinishRang(checkbox) {
+  const span = document.getElementById('toggleSpan');
+  const circle = document.getElementById('toggleCircle');
+  if (!span || !circle) return;
+  if (checkbox.checked) {
+    span.style.background = '#2563eb';
+    circle.style.left = '28px';
+  } else {
+    span.style.background = '#e2e8f0';
+    circle.style.left = '4px';
+  }
+}
 function rasmTanlash(input) {
   const file = input.files[0];
   if (!file) return;
