@@ -1199,6 +1199,9 @@ O'zbek tilida batafsil javob ber."""
                 matn += "\n━━━━━━━━━━━━━━━━━━━━"
                 result = telegram_yuborish(int_soz['token'], int_soz['chat_id'], matn)
                 return self.send_json(result)
+
+            if path == '/api/xarajatlar':
+                conn.execute("INSERT INTO xarajatlar (nomi,summa,kategoriya,foydalanuvchi_id,izoh) VALUES (?,?,?,?,?)",
                     (body['nomi'],body['summa'],body.get('kategoriya',''),body.get('foydalanuvchi_id'),body.get('izoh','')))
                 conn.commit(); return self.send_json({'muvaffaqiyat':True})
 
