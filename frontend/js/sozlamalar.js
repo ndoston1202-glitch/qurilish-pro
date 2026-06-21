@@ -60,6 +60,9 @@ function sozlamalarYukla() {
         <button class="tab-btn" onclick="sozTabAlmashtir('tolov',this)">
           <i class="fas fa-credit-card"></i> To'lov usullari
         </button>
+        <button class="tab-btn" onclick="sozTabAlmashtir('etiketka',this)">
+          <i class="fas fa-tag"></i> Etiketka shablonlari
+        </button>
       </div>
       <div id="sozKontent"></div>
     </div>`;
@@ -76,6 +79,7 @@ function sozTabAlmashtir(tur, btn) {
     case 'interfeys': sozInterfeysKorsatish(s); break;
     case 'savdo': sozSavdoKorsatish(s); break;
     case 'tolov': sozTolovKorsatish(s); break;
+    case 'etiketka': sozEtiketkaKorsatish(); break;
   }
 }
 
@@ -360,6 +364,245 @@ function sozTolovSaqla() {
   });
   sozlamalarniSaqla(s);
   toast('✅ To\'lov usullari saqlandi!', 'success');
+}
+
+// ===== ETIKETKA SHABLONLARI (Sozlamalar ichida) =====
+async function sozEtiketkaKorsatish() {
+  document.getElementById('sozKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-tag"></i> Etiketka shablonlari</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="sozEtiketkaYangiQosh()">
+            <i class="fas fa-plus"></i> Yangi shablon
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="sahifaOch('etiketka')">
+            <i class="fas fa-external-link-alt"></i> Dizaynerga o'tish
+          </button>
+        </div>
+      </div>
+      <div class="card-body" id="sozEtiketkaDiv">
+        <div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+      </div>
+    </div>`;
+  await sozEtiketkaRoyxatYukla();
+}
+
+async function sozEtiketkaRoyxatYukla() {
+  try {
+    const shablonlar = await apiGet('/etiketka');
+    const div = document.getElementById('sozEtiketkaDiv');
+    if (!div) return;
+
+    if (!shablonlar.length) {
+      div.innerHTML = `
+        <div class="empty-state" style="padding:40px">
+          <i class="fas fa-tag fa-3x" style="opacity:0.2;margin-bottom:16px"></i>
+          <p style="margin-bottom:16px">Hali shablon yaratilmagan</p>
+          <button class="btn btn-primary" onclick="sozEtiketkaYangiQosh()">
+            <i class="fas fa-plus"></i> Birinchi shablonni yarating
+          </button>
+        </div>`;
+      return;
+    }
+
+    div.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+        ${shablonlar.map(s => `
+          <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;
+            transition:all 0.2s;background:white"
+            onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'"
+            onmouseout="this.style.boxShadow=''">
+            <!-- PREVIEW -->
+            <div style="background:#f8fafc;padding:16px;display:flex;align-items:center;justify-content:center;min-height:80px">
+              <div style="background:white;border:1px solid #e2e8f0;border-radius:4px;
+                padding:8px;box-shadow:0 1px 4px rgba(0,0,0,0.1);font-size:10px;text-align:center">
+                <div style="width:${Math.min(120,s.uzunlik*1.5)}px;height:${Math.min(60,s.balandlik*1.5)}px;
+                  display:flex;align-items:center;justify-content:center;color:#64748b">
+                  <div>
+                    <div style="font-size:8px;font-weight:600">${s.nomi}</div>
+                    <div style="font-size:7px;color:#94a3b8;margin-top:2px">${s.uzunlik}×${s.balandlik}mm</div>
+                    <div style="font-size:7px;color:#94a3b8">
+                      ${JSON.parse(s.elementlar||'[]').length} ta element
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- INFO -->
+            <div style="padding:12px">
+              <div style="font-weight:700;font-size:14px;margin-bottom:4px">${s.nomi}</div>
+              <div style="font-size:12px;color:#64748b;margin-bottom:10px">
+                📏 ${s.uzunlik}×${s.balandlik}mm |
+                📦 ${JSON.parse(s.elementlar||'[]').length} ta element
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-primary btn-sm" style="flex:1"
+                  onclick="sozEtiketkaOch(${s.id})">
+                  <i class="fas fa-edit"></i> Tahrirlash
+                </button>
+                <button class="btn btn-success btn-sm btn-icon"
+                  onclick="sozEtiketkaChiqar(${s.id})" title="Etiketka chiqarish">
+                  <i class="fas fa-print"></i>
+                </button>
+                <button class="btn btn-danger btn-sm btn-icon"
+                  onclick="sozEtiketkaOchir(${s.id},'${s.nomi.replace(/'/g,"\\'")}')" title="O'chirish">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div style="padding:10px;color:#64748b;font-size:13px;margin-top:8px">
+        Jami: ${shablonlar.length} ta shablon
+      </div>`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function sozEtiketkaYangiQosh() {
+  // Nom so'rash
+  const nomi = await new Promise(resolve => {
+    modalOch('Yangi etiketka shabloni', `
+      <div class="form-group">
+        <label style="font-weight:600">Shablon nomi *</label>
+        <input type="text" id="yangiShablonNomi" autofocus
+          style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px"
+          placeholder="Masalan: Asosiy etiketka 58×30mm"
+          onkeypress="if(event.key==='Enter'){modalYop();document.getElementById('yangiShablonNomi').blur()}">
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:8px">Standart o'lchamlar:</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${[['58×30mm','58','30'],['58×40mm','58','40'],['40×30mm','40','30'],
+             ['80×50mm','80','50'],['100×50mm','100','50'],['100×150mm','100','150']]
+            .map(([n,u,b]) => `
+              <button onclick="sozShablonOlchamTanla('${u}','${b}','${n}')"
+                style="padding:5px 12px;border:1px solid #e2e8f0;border-radius:6px;
+                background:white;font-size:12px;cursor:pointer"
+                id="olcham_${u}_${b}"
+                onmouseover="this.style.background='#f1f5f9'"
+                onmouseout="if(!this.dataset.tanlandi)this.style.background='white'">${n}</button>`).join('')}
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label style="font-size:12px">Uzunlik (mm)</label>
+          <input type="number" id="yangiUzunlik" value="58" min="10"
+            style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px">
+        </div>
+        <div class="form-group">
+          <label style="font-size:12px">Balandlik (mm)</label>
+          <input type="number" id="yangiBalandlik" value="30" min="10"
+            style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px">
+        </div>
+      </div>
+      <div class="modal-footer" style="padding:0">
+        <button class="btn btn-secondary" onclick="modalYop()">Bekor</button>
+        <button class="btn btn-primary" onclick="sozEtiketkaYaratish()">
+          <i class="fas fa-magic"></i> Yaratish va tahrirlash
+        </button>
+      </div>`);
+  });
+}
+
+function sozShablonOlchamTanla(u, b, n) {
+  document.getElementById('yangiUzunlik').value = u;
+  document.getElementById('yangiBalandlik').value = b;
+  document.querySelectorAll('[id^=olcham_]').forEach(el => {
+    el.style.background = 'white';
+    el.style.borderColor = '#e2e8f0';
+    delete el.dataset.tanlandi;
+  });
+  const btn = document.getElementById(`olcham_${u}_${b}`);
+  if (btn) { btn.style.background='#eff6ff'; btn.style.borderColor='#2563eb'; btn.dataset.tanlandi='1'; }
+}
+
+async function sozEtiketkaYaratish() {
+  const nomi    = document.getElementById('yangiShablonNomi')?.value?.trim();
+  const uzunlik = parseFloat(document.getElementById('yangiUzunlik')?.value) || 58;
+  const balandlik = parseFloat(document.getElementById('yangiBalandlik')?.value) || 30;
+  if (!nomi) { toast('Shablon nomini kiriting!', 'warning'); return; }
+  try {
+    const r = await apiPost('/etiketka', { nomi, uzunlik, balandlik, elementlar: [] });
+    modalYop();
+    toast('✅ Shablon yaratildi! Dizaynerga o\'tmoqda...', 'success');
+    // Dizaynerga o'tib shablonni yuklash
+    setTimeout(async () => {
+      sahifaOch('etiketka');
+      await new Promise(res => setTimeout(res, 500));
+      if (typeof eShablonYukla === 'function') eShablonYukla(r.id);
+    }, 300);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function sozEtiketkaOch(id) {
+  sahifaOch('etiketka');
+  setTimeout(async () => {
+    await new Promise(res => setTimeout(res, 500));
+    if (typeof eShablonYukla === 'function') eShablonYukla(id);
+  }, 300);
+}
+
+async function sozEtiketkaChiqar(id) {
+  // Mahsulot tanlash modali
+  try {
+    const mahsulotlar = await apiGet('/mahsulotlar');
+    modalOch('🏷️ Qaysi mahsulot uchun etiketka?', `
+      <div style="margin-bottom:10px">
+        <input type="text" id="etiketMahQidiruv" class="search-input"
+          placeholder="🔍 Mahsulot qidirish..." oninput="etiketMahFilter()"
+          style="width:100%">
+      </div>
+      <div id="etiketMahRoyxat" style="max-height:320px;overflow-y:auto">
+        ${sozEtiketkaMahsulotlarHtml(mahsulotlar, id)}
+      </div>
+      <div class="modal-footer" style="padding:0;margin-top:12px">
+        <button class="btn btn-secondary" onclick="modalYop()">Bekor</button>
+      </div>`);
+    window._etiketMahsulotlar = mahsulotlar;
+    window._etiketShablonId = id;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function sozEtiketkaMahsulotlarHtml(royxat, shablon_id) {
+  if (!royxat.length) return '<div class="empty-state"><i class="fas fa-box-open"></i><p>Mahsulot topilmadi</p></div>';
+  return royxat.map(m => `
+    <div onclick="sozEtiketkaChiqarMahsulot(${m.id},${shablon_id})"
+      style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;
+      cursor:pointer;display:flex;align-items:center;gap:10px"
+      onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">
+      ${m.rasm ? `<img src="${m.rasm}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0">` :
+        `<div style="width:36px;height:36px;background:#f1f5f9;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-box" style="color:#cbd5e1"></i></div>`}
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${m.nomi}</div>
+        <div style="font-size:11px;color:#64748b">${m.kategoriya_nomi||''} | ${formatSum(m.sotish_narxi)}</div>
+      </div>
+      <i class="fas fa-print" style="color:#2563eb"></i>
+    </div>`).join('');
+}
+
+function etiketMahFilter() {
+  const q = document.getElementById('etiketMahQidiruv')?.value.toLowerCase() || '';
+  const f = (window._etiketMahsulotlar||[]).filter(m => m.nomi.toLowerCase().includes(q));
+  document.getElementById('etiketMahRoyxat').innerHTML = sozEtiketkaMahsulotlarHtml(f, window._etiketShablonId);
+}
+
+async function sozEtiketkaChiqarMahsulot(mahsulot_id, shablon_id) {
+  modalYop();
+  try {
+    eJoriyMahsulot = await apiGet('/mahsulotlar/' + mahsulot_id);
+    await eShablonBilanChiqar(shablon_id);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function sozEtiketkaOchir(id, nomi) {
+  tasdiqlash(`"${nomi}" shablonini o'chirasizmi?`, async () => {
+    try {
+      await apiDelete('/etiketka/' + id);
+      toast('Shablon o\'chirildi!');
+      sozEtiketkaRoyxatYukla();
+    } catch(e) { toast(e.message, 'error'); }
+  });
 }
 
 // ===== SOZLAMALARNI DASTURGA QO'LLASH =====
