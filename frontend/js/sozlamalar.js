@@ -617,6 +617,291 @@ function sozEtiketkaOchir(id, nomi) {
 async function sozIntegratsiyaKorsatish() {
   document.getElementById('sozKontent').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <div class="card-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:40px;height:40px;border-radius:10px;background:#229ed9;
+              display:flex;align-items:center;justify-content:center">
+              <i class="fab fa-telegram" style="color:white;font-size:20px"></i>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:15px">Telegram Bot</div>
+              <div style="font-size:12px;color:#64748b">Kunlik jurnal va bildirishnomalar</div>
+            </div>
+          </div>
+          <div id="telegramHolat" style="font-size:12px;color:#94a3b8">Yuklanmoqda...</div>
+        </div>
+        <div class="card-body">
+
+          <!-- FAQAT TOKEN KERAK -->
+          <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;
+            padding:14px;margin-bottom:16px">
+            <div style="font-weight:700;font-size:13px;color:#0369a1;margin-bottom:8px">
+              <i class="fas fa-info-circle"></i> Qanday ulash? (2 qadam)
+            </div>
+            <ol style="font-size:13px;color:#0c4a6e;line-height:2.2;padding-left:16px">
+              <li>Telegramda <b>@BotFather</b> ga yozing → <code>/newbot</code> → Token oling</li>
+              <li>Tokenni kiriting → <b>"Ulash"</b> tugmasini bosing — hammasi tayyor! ✅</li>
+            </ol>
+          </div>
+
+          <div class="form-group">
+            <label style="font-weight:600;font-size:14px">
+              <i class="fab fa-telegram" style="color:#229ed9"></i> Bot Token *
+            </label>
+            <div style="display:flex;gap:8px">
+              <input type="password" id="tgToken"
+                style="flex:1;padding:11px 14px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px"
+                placeholder="1234567890:AAEhBOweik6ad3gM5Zn_example">
+              <button class="btn btn-secondary btn-sm" onclick="tokenKorsatYashir()" id="tokenKozBtn">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px">
+              @BotFather → /newbot → yuborilgan token
+            </div>
+          </div>
+
+          <!-- CHAT ID — avtomatik topiladi -->
+          <div class="form-group">
+            <label style="font-weight:600;font-size:14px">Chat ID
+              <span style="font-size:11px;font-weight:400;color:#94a3b8">(avtomatik topiladi)</span>
+            </label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="tgChatId" readonly
+                style="flex:1;padding:11px 14px;border:2px solid #e2e8f0;border-radius:8px;
+                font-size:14px;background:#f8fafc;color:#475569"
+                placeholder="Token kiritib 'Ulash' bosganingizda avtomatik to'ladi">
+              <button class="btn btn-primary btn-sm" onclick="chatIdTopish()" title="Chat ID ni avtomatik topish">
+                <i class="fas fa-search"></i> Topish
+              </button>
+            </div>
+            <div style="font-size:11px;color:#64748b;margin-top:4px">
+              💡 Chat ID ni topish uchun: Botingizga <b>/start</b> yuboring, keyin <b>"Topish"</b> bosing
+            </div>
+          </div>
+
+          <!-- BILDIRISHNOMALAR -->
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+            padding:14px;margin-bottom:16px">
+            <div style="font-weight:700;font-size:13px;margin-bottom:10px">
+              <i class="fas fa-bell"></i> Qanday xabarlar kesin?
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              ${[
+                {id:'har_sotuv',    n:'Har sotuv bo\'lganda xabar',        e:'🛒'},
+                {id:'kunlik_avtom', n:'Kun oxirida hisobotni avtomatik yuborish', e:'📊'},
+                {id:'kam_mahsulot', n:'Mahsulot kam qolganda xabar',        e:'⚠️'},
+                {id:'kechikkan_qarz',n:'Kechikkan qarzlar haqida xabar',   e:'⏰'},
+              ].map(b=>`
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;
+                  padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;background:white">
+                  <input type="checkbox" id="tg_${b.id}" style="width:16px;height:16px;cursor:pointer">
+                  <span style="font-size:13px">${b.e} ${b.n}</span>
+                </label>`).join('')}
+            </div>
+          </div>
+
+          <!-- TUGMALAR -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="telegramUlash()" style="flex:1">
+              <i class="fab fa-telegram"></i> Ulash va saqlash
+            </button>
+            <button class="btn btn-secondary" onclick="telegramTest()">
+              <i class="fas fa-paper-plane"></i> Test
+            </button>
+            <button class="btn btn-success" onclick="telegramKunlikYuborish()">
+              <i class="fas fa-chart-bar"></i> Hisobot yuborish
+            </button>
+          </div>
+
+          <div id="tgStatus" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px"></div>
+        </div>
+      </div>
+    </div>`;
+
+  // Mavjud sozlamalarni yuklash
+  try {
+    const data = await apiGet('/integratsiya/telegram');
+    if (data && data.token) {
+      document.getElementById('tgToken').value = data.token;
+      document.getElementById('tgChatId').value = data.chat_id || '';
+      const soz = JSON.parse(data.sozlamalar || '{}');
+      ['har_sotuv','kunlik_avtom','kam_mahsulot','kechikkan_qarz'].forEach(k => {
+        const el = document.getElementById('tg_' + k);
+        if (el) el.checked = soz[k] || false;
+      });
+      const h = document.getElementById('telegramHolat');
+      if (h) h.innerHTML = data.faol
+        ? '<span style="color:#10b981;font-weight:600">● Ulangan</span>'
+        : '<span style="color:#94a3b8">● Ulanmagan</span>';
+    } else {
+      const h = document.getElementById('telegramHolat');
+      if (h) h.innerHTML = '<span style="color:#94a3b8">● Sozlanmagan</span>';
+    }
+  } catch(e) {}
+}
+
+// ===== CHAT ID AVTOMATIK TOPISH =====
+async function chatIdTopish() {
+  const token = document.getElementById('tgToken')?.value?.trim();
+  if (!token) { toast('Avval token kiriting!', 'warning'); return; }
+
+  const statusDiv = document.getElementById('tgStatus');
+  if (statusDiv) {
+    statusDiv.style.display = 'block';
+    statusDiv.style.background = '#f8fafc';
+    statusDiv.style.border = '1px solid #e2e8f0';
+    statusDiv.style.color = '#475569';
+    statusDiv.innerHTML = '⏳ Bot bilan bog\'lanilmoqda...';
+  }
+
+  try {
+    // Telegram getUpdates orqali chat_id topish
+    const r = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
+    const data = await r.json();
+
+    if (!data.ok) {
+      throw new Error(data.description || 'Token noto\'g\'ri!');
+    }
+
+    const updates = data.result;
+    if (!updates || updates.length === 0) {
+      if (statusDiv) {
+        statusDiv.style.background = '#fffbeb';
+        statusDiv.style.border = '1px solid #fcd34d';
+        statusDiv.style.color = '#92400e';
+        statusDiv.innerHTML = `
+          ⚠️ Xabar topilmadi! Avval botingizga <b>/start</b> yuboring, keyin qayta bosing.
+          <br>Botingiz: <b>t.me/...</b>`;
+      }
+      return;
+    }
+
+    // Oxirgi xabardan chat_id olish
+    const lastUpdate = updates[updates.length - 1];
+    const chatId = lastUpdate.message?.chat?.id ||
+                   lastUpdate.channel_post?.chat?.id ||
+                   lastUpdate.callback_query?.message?.chat?.id;
+    const chatIsmi = lastUpdate.message?.chat?.first_name ||
+                     lastUpdate.message?.chat?.title || '';
+
+    if (chatId) {
+      document.getElementById('tgChatId').value = chatId;
+      if (statusDiv) {
+        statusDiv.style.background = '#f0fdf4';
+        statusDiv.style.border = '1px solid #bbf7d0';
+        statusDiv.style.color = '#166534';
+        statusDiv.innerHTML = `✅ Chat ID topildi: <b>${chatId}</b>${chatIsmi ? ' — ' + chatIsmi : ''}`;
+      }
+      toast(`✅ Chat ID topildi: ${chatId}`, 'success');
+    }
+  } catch(err) {
+    if (statusDiv) {
+      statusDiv.style.background = '#fff1f2';
+      statusDiv.style.border = '1px solid #fecaca';
+      statusDiv.style.color = '#991b1b';
+      statusDiv.innerHTML = `❌ Xato: ${err.message}`;
+    }
+    toast('❌ ' + err.message, 'error');
+  }
+}
+
+// ===== TELEGRAM ULASH VA SAQLASH =====
+async function telegramUlash() {
+  const token   = document.getElementById('tgToken')?.value?.trim();
+  const chat_id = document.getElementById('tgChatId')?.value?.trim();
+
+  if (!token) { toast('Token kiritilmagan!', 'warning'); return; }
+
+  // Chat ID yo'q bo'lsa avtomatik topishga harakat
+  if (!chat_id) {
+    toast('Chat ID topilmoqda...', 'success');
+    await chatIdTopish();
+    const yangiChatId = document.getElementById('tgChatId')?.value?.trim();
+    if (!yangiChatId) {
+      toast('⚠️ Botingizga /start yuboring, keyin qayta bosing!', 'warning');
+      return;
+    }
+  }
+
+  const finalChatId = document.getElementById('tgChatId')?.value?.trim();
+  const sozlamalar = {};
+  ['har_sotuv','kunlik_avtom','kam_mahsulot','kechikkan_qarz'].forEach(k => {
+    sozlamalar[k] = document.getElementById('tg_' + k)?.checked || false;
+  });
+
+  try {
+    await apiPost('/integratsiya', { tur:'telegram', token, chat_id: finalChatId, faol: 1, sozlamalar });
+    toast('✅ Telegram ulandi!', 'success');
+    const h = document.getElementById('telegramHolat');
+    if (h) h.innerHTML = '<span style="color:#10b981;font-weight:600">● Ulangan</span>';
+
+    // Test xabar yuborish
+    const statusDiv = document.getElementById('tgStatus');
+    if (statusDiv) {
+      statusDiv.style.display = 'block';
+      statusDiv.style.background = '#f0fdf4';
+      statusDiv.style.border = '1px solid #bbf7d0';
+      statusDiv.style.color = '#166534';
+      statusDiv.innerHTML = '⏳ Test xabar yuborilmoqda...';
+    }
+    const r = await apiPost('/telegram/test', { token, chat_id: finalChatId });
+    if (r.muvaffaqiyat && statusDiv) {
+      statusDiv.innerHTML = '✅ Telegram muvaffaqiyatli ulandi! Test xabar yuborildi.';
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function tokenKorsatYashir() {
+  const inp = document.getElementById('tgToken');
+  const btn = document.getElementById('tokenKozBtn');
+  if (!inp) return;
+  if (inp.type === 'password') { inp.type='text'; btn.innerHTML='<i class="fas fa-eye-slash"></i>'; }
+  else { inp.type='password'; btn.innerHTML='<i class="fas fa-eye"></i>'; }
+}
+
+async function telegramTest() {
+  const token   = document.getElementById('tgToken')?.value?.trim();
+  const chat_id = document.getElementById('tgChatId')?.value?.trim();
+  if (!token || !chat_id) { toast('Avval "Ulash" tugmasini bosing!', 'warning'); return; }
+  const statusDiv = document.getElementById('tgStatus');
+  if (statusDiv) {
+    statusDiv.style.display='block';
+    statusDiv.style.background='#f8fafc';
+    statusDiv.style.border='1px solid #e2e8f0';
+    statusDiv.style.color='#475569';
+    statusDiv.textContent='⏳ Yuborilmoqda...';
+  }
+  try {
+    const r = await apiPost('/telegram/test', { token, chat_id });
+    if (r.muvaffaqiyat) {
+      if (statusDiv) { statusDiv.style.background='#f0fdf4'; statusDiv.style.border='1px solid #bbf7d0'; statusDiv.style.color='#166534'; statusDiv.textContent='✅ Test xabar yuborildi! Telegramni tekshiring.'; }
+      toast('✅ Test xabar yuborildi!', 'success');
+    } else throw new Error(r.xato||'Xato');
+  } catch(e) {
+    if (statusDiv) { statusDiv.style.background='#fff1f2'; statusDiv.style.border='1px solid #fecaca'; statusDiv.style.color='#991b1b'; statusDiv.textContent=`❌ ${e.message}`; }
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
+async function telegramKunlikYuborish() {
+  const statusDiv = document.getElementById('tgStatus');
+  if (statusDiv) { statusDiv.style.display='block'; statusDiv.style.background='#f8fafc'; statusDiv.style.border='1px solid #e2e8f0'; statusDiv.style.color='#475569'; statusDiv.textContent='⏳ Hisobot yuborilmoqda...'; }
+  try {
+    const bugun = new Date().toISOString().split('T')[0];
+    const r = await apiPost('/telegram/kunlik', { sana: bugun });
+    if (r.muvaffaqiyat) {
+      if (statusDiv) { statusDiv.style.background='#f0fdf4'; statusDiv.style.border='1px solid #bbf7d0'; statusDiv.style.color='#166534'; statusDiv.textContent='✅ Bugungi hisobot Telegramga yuborildi!'; }
+      toast('✅ Hisobot yuborildi!', 'success');
+    } else throw new Error(r.xato||'Xato');
+  } catch(e) {
+    if (statusDiv) { statusDiv.style.background='#fff1f2'; statusDiv.style.border='1px solid #fecaca'; statusDiv.style.color='#991b1b'; statusDiv.textContent=`❌ ${e.message}`; }
+    toast('❌ ' + e.message, 'error');
+  }
+}
+  document.getElementById('sozKontent').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px">
 
       <!-- TELEGRAM -->
       <div class="card">
@@ -745,110 +1030,7 @@ async function sozIntegratsiyaKorsatish() {
     const holat = document.getElementById('telegramHolat');
     if (holat) holat.innerHTML = '<span style="color:#94a3b8">● Sozlanmagan</span>';
   }
-}
 
-function tokenKorsatYashir() {
-  const inp = document.getElementById('tgToken');
-  const btn = document.getElementById('tokenKozBtn');
-  if (!inp) return;
-  if (inp.type === 'password') {
-    inp.type = 'text';
-    btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
-  } else {
-    inp.type = 'password';
-    btn.innerHTML = '<i class="fas fa-eye"></i>';
-  }
-}
-
-async function telegramSaqla() {
-  const token   = document.getElementById('tgToken')?.value?.trim();
-  const chat_id = document.getElementById('tgChatId')?.value?.trim();
-  if (!token || !chat_id) {
-    toast('Token va Chat ID kiritilishi shart!', 'warning'); return;
-  }
-  const sozlamalar = {};
-  ['har_sotuv','kunlik_avtom','kam_mahsulot','qaytarish'].forEach(k => {
-    sozlamalar[k] = document.getElementById('tg_' + k)?.checked || false;
-  });
-  try {
-    await apiPost('/integratsiya', { tur:'telegram', token, chat_id, faol: 1, sozlamalar });
-    toast('✅ Telegram sozlamalari saqlandi!', 'success');
-    const holat = document.getElementById('telegramHolat');
-    if (holat) holat.innerHTML = '<span style="color:#10b981;font-weight:600">● Ulangan</span>';
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-async function telegramTest() {
-  const token   = document.getElementById('tgToken')?.value?.trim();
-  const chat_id = document.getElementById('tgChatId')?.value?.trim();
-  if (!token || !chat_id) { toast('Avval token va Chat ID kiriting!', 'warning'); return; }
-
-  const statusDiv = document.getElementById('tgStatus');
-  if (statusDiv) {
-    statusDiv.style.display = 'block';
-    statusDiv.style.background = '#f8fafc';
-    statusDiv.style.border = '1px solid #e2e8f0';
-    statusDiv.textContent = '⏳ Yuborilmoqda...';
-  }
-
-  try {
-    const r = await apiPost('/telegram/test', { token, chat_id });
-    if (r.muvaffaqiyat) {
-      if (statusDiv) {
-        statusDiv.style.background = '#f0fdf4';
-        statusDiv.style.border = '1px solid #bbf7d0';
-        statusDiv.style.color = '#166534';
-        statusDiv.textContent = '✅ Test xabar muvaffaqiyatli yuborildi! Telegramni tekshiring.';
-      }
-      toast('✅ Test xabar yuborildi!', 'success');
-    } else {
-      throw new Error(r.xato || 'Xato yuz berdi');
-    }
-  } catch(e) {
-    if (statusDiv) {
-      statusDiv.style.background = '#fff1f2';
-      statusDiv.style.border = '1px solid #fecaca';
-      statusDiv.style.color = '#991b1b';
-      statusDiv.textContent = `❌ Xato: ${e.message}. Token va Chat ID ni tekshiring.`;
-    }
-    toast('❌ ' + e.message, 'error');
-  }
-}
-
-async function telegramKunlikYuborish() {
-  const statusDiv = document.getElementById('tgStatus');
-  if (statusDiv) {
-    statusDiv.style.display = 'block';
-    statusDiv.style.background = '#f8fafc';
-    statusDiv.style.border = '1px solid #e2e8f0';
-    statusDiv.textContent = '⏳ Hisobot yuborilmoqda...';
-  }
-  try {
-    const bugun = new Date().toISOString().split('T')[0];
-    const r = await apiPost('/telegram/kunlik', { sana: bugun });
-    if (r.muvaffaqiyat) {
-      if (statusDiv) {
-        statusDiv.style.background = '#f0fdf4';
-        statusDiv.style.border = '1px solid #bbf7d0';
-        statusDiv.style.color = '#166534';
-        statusDiv.textContent = '✅ Bugungi hisobot Telegramga yuborildi!';
-      }
-      toast('✅ Hisobot yuborildi!', 'success');
-    } else {
-      throw new Error(r.xato || 'Xato');
-    }
-  } catch(e) {
-    if (statusDiv) {
-      statusDiv.style.background = '#fff1f2';
-      statusDiv.style.border = '1px solid #fecaca';
-      statusDiv.style.color = '#991b1b';
-      statusDiv.textContent = `❌ ${e.message}`;
-    }
-    toast('❌ ' + e.message, 'error');
-  }
-}
-
-// ===== SOZLAMALARNI DASTURGA QO'LLASH =====
 function sozlamalarniQolla() {
   const s = sozlamalarniOl();
   // Rang
@@ -857,3 +1039,5 @@ function sozlamalarniQolla() {
     document.documentElement.style.setProperty('--primary', ranglar[s.rangTema]);
   }
 }
+
+

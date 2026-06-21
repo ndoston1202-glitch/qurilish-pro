@@ -251,6 +251,22 @@ def init_db():
         )""")
         conn.commit()
     except: pass
+    # v9: qarz tarixi (muddat bilan)
+    try:
+        conn.execute("""CREATE TABLE IF NOT EXISTS qarz_tarixi (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mijoz_id INTEGER NOT NULL,
+            sotuv_id INTEGER,
+            summa REAL NOT NULL,
+            qoldi REAL NOT NULL DEFAULT 0,
+            muddat TEXT,
+            holat TEXT DEFAULT 'ochiq',
+            izoh TEXT,
+            yaratilgan TEXT DEFAULT (datetime('now','localtime')),
+            FOREIGN KEY (mijoz_id) REFERENCES mijozlar(id)
+        )""")
+        conn.commit()
+    except: pass
 
     # v2: mijoz_id sotuvlarda
     try: conn.execute("ALTER TABLE sotuvlar ADD COLUMN mijoz_id INTEGER"); conn.commit()
@@ -829,6 +845,37 @@ O'zbek tilida batafsil javob ber."""
                 row = conn.execute("SELECT * FROM integratsiya_sozlamalar WHERE tur=?", (m_int.group(1),)).fetchone()
                 return self.send_json(row_to_dict(row) if row else {})
 
+            # QARZ TARIXI (GET)
+            if path == '/api/qarz_tarixi':
+                bugun = datetime.now().strftime('%Y-%m-%d')
+                mijoz_id = qp('mijoz_id')
+                holat_f = qp('holat')
+                sql = """SELECT q.*,
+                    m.ism||' '||COALESCE(m.familiya,'') as mijoz_ismi,
+                    m.telefon as mijoz_telefon,
+                    CASE WHEN q.holat='tolandi' THEN 'tolandi'
+                        WHEN q.muddat IS NULL THEN 'muddatsiz'
+                        WHEN q.muddat < ? THEN 'kechikkan'
+                        WHEN q.muddat = ? THEN 'bugun'
+                        WHEN q.muddat <= date(?, '+3 days') THEN 'yaqin'
+                        ELSE 'normal' END as status,
+                    CASE WHEN q.muddat IS NOT NULL AND q.holat='ochiq'
+                        THEN CAST(julianday(?) - julianday(q.muddat) AS INTEGER)
+                        ELSE 0 END as kechikkan_kun
+                    FROM qarz_tarixi q JOIN mijozlar m ON q.mijoz_id=m.id WHERE 1=1"""
+                params = [bugun,bugun,bugun,bugun]
+                if mijoz_id: sql += " AND q.mijoz_id=?"; params.append(mijoz_id)
+                if holat_f == 'ochiq': sql += " AND q.holat='ochiq'"
+                elif holat_f == 'kechikkan': sql += " AND q.holat='ochiq' AND q.muddat IS NOT NULL AND q.muddat<?"; params.append(bugun)
+                sql += " ORDER BY COALESCE(q.muddat,'9999') ASC, q.yaratilgan DESC"
+                return self.send_json(rows_to_list(conn.execute(sql,params).fetchall()))
+
+            m_qarz = re.match(r'^/api/qarz_tarixi/(\d+)$', path)
+            if m_qarz:
+                row = conn.execute("SELECT q.*,m.ism||' '||COALESCE(m.familiya,'') as mijoz_ismi FROM qarz_tarixi q JOIN mijozlar m ON q.mijoz_id=m.id WHERE q.id=?", (m_qarz.group(1),)).fetchone()
+                if not row: return self.send_error_json('Topilmadi',404)
+                return self.send_json(row_to_dict(row))
+
             # KUNLIK JURNAL (Telegram uchun)
             if path == '/api/kunlik_jurnal':
                 kun = qp('sana') or datetime.now().strftime('%Y-%m-%d')
@@ -1078,6 +1125,33 @@ O'zbek tilida batafsil javob ber."""
                 except Exception as e:
                     return self.send_error_json(str(e))
 
+            # QARZ TARIXI QO'SHISH
+            if path == '/api/qarz_tarixi':
+                r = conn.execute(
+                    "INSERT INTO qarz_tarixi (mijoz_id,sotuv_id,summa,qoldi,muddat,holat,izoh) VALUES (?,?,?,?,?,?,?)",
+                    (body['mijoz_id'], body.get('sotuv_id'),
+                     body['summa'], body.get('qoldi', body['summa']),
+                     body.get('muddat'), body.get('holat','ochiq'),
+                     body.get('izoh',''))).lastrowid
+                conn.commit()
+                return self.send_json({'muvaffaqiyat':True,'id':r})
+
+            # QARZ TO'LASH
+            m_qt = re.match(r'^/api/qarz_tarixi/(\d+)/tolash$', path)
+            if m_qt:
+                qarz_id = m_qt.group(1)
+                tolangan = float(body.get('summa', 0))
+                qarz = conn.execute("SELECT * FROM qarz_tarixi WHERE id=?", (qarz_id,)).fetchone()
+                if not qarz: return self.send_error_json('Qarz topilmadi', 404)
+                yangi_qoldi = max(0, qarz['qoldi'] - tolangan)
+                yangi_holat = 'tolandi' if yangi_qoldi <= 0 else 'ochiq'
+                conn.execute("UPDATE qarz_tarixi SET qoldi=?,holat=? WHERE id=?",
+                    (yangi_qoldi, yangi_holat, qarz_id))
+                conn.execute("UPDATE mijozlar SET qarz=MAX(0,qarz-?) WHERE id=?",
+                    (min(tolangan, qarz['qoldi']), qarz['mijoz_id']))
+                conn.commit()
+                return self.send_json({'muvaffaqiyat':True,'qoldi':yangi_qoldi,'holat':yangi_holat})
+
             # ETIKETKA SHABLONLARI
             if path == '/api/etiketka':
                 r = conn.execute(
@@ -1145,6 +1219,22 @@ O'zbek tilida batafsil javob ber."""
                 # Qarz bo'lsa mijoz qarzini yangilaymiz
                 if mijoz_id and body.get('tolov_turi') == 'qarz':
                     conn.execute("UPDATE mijozlar SET qarz=qarz+? WHERE id=?", (yakuniy, mijoz_id))
+                    # Qarz tarixiga ham yozish
+                    muddat = body.get('qarz_muddat')
+                    conn.execute(
+                        "INSERT INTO qarz_tarixi (mijoz_id,sotuv_id,summa,qoldi,muddat,holat,izoh) VALUES (?,?,?,?,?,?,?)",
+                        (mijoz_id, r, yakuniy, yakuniy, muddat, 'ochiq',
+                         f"Sotuv #{chek} — qarz"))
+                # Aralash to'lovda qarz bo'lsa
+                elif mijoz_id:
+                    qarz_summasi = sum(t['summa'] for t in body.get('tolov_tafsilotlari',[]) if t.get('tur')=='qarz')
+                    if qarz_summasi > 0:
+                        conn.execute("UPDATE mijozlar SET qarz=qarz+? WHERE id=?", (qarz_summasi, mijoz_id))
+                        muddat = body.get('qarz_muddat')
+                        conn.execute(
+                            "INSERT INTO qarz_tarixi (mijoz_id,sotuv_id,summa,qoldi,muddat,holat,izoh) VALUES (?,?,?,?,?,?,?)",
+                            (mijoz_id, r, qarz_summasi, qarz_summasi, muddat, 'ochiq',
+                             f"Sotuv #{chek} — qarzga"))
                 conn.commit()
                 return self.send_json({'muvaffaqiyat':True,'sotuv_id':r,'chek_raqam':chek,'jami_summa':yakuniy})
 
@@ -1333,6 +1423,13 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/kategoriyalar/(\d+)$', path)
             if m:
                 conn.execute("UPDATE kategoriyalar SET nomi=?,tavsif=? WHERE id=?", (body['nomi'],body.get('tavsif',''),m.group(1)))
+                conn.commit(); return self.send_json({'muvaffaqiyat':True})
+
+            m = re.match(r'^/api/qarz_tarixi/(\d+)$', path)
+            if m:
+                conn.execute("UPDATE qarz_tarixi SET muddat=?,holat=?,izoh=? WHERE id=?",
+                    (body.get('muddat'), body.get('holat','ochiq'),
+                     body.get('izoh',''), m.group(1)))
                 conn.commit(); return self.send_json({'muvaffaqiyat':True})
 
             m = re.match(r'^/api/brendlar/(\d+)$', path)

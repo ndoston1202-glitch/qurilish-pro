@@ -32,6 +32,9 @@ async function kassaHisobiYukla() {
         <button class="btn btn-danger" onclick="chiqimQosh()" style="flex:1;padding:11px;font-size:14px">
           <i class="fas fa-minus-circle"></i> Kassadan chiqim
         </button>
+        <button class="btn btn-warning" onclick="qarzlarSahifaYukla()" style="padding:11px;font-size:14px">
+          <i class="fas fa-clock"></i> Qarzlar jadvali
+        </button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="card">

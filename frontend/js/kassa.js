@@ -819,10 +819,22 @@ async function sotuvYakunla() {
   const qarzBor = tolovQatorlarData.some(q => q.tur === 'qarz');
   if (qarzBor && !tanlangan_mijoz) {
     toast('⚠️ Qarzga sotish uchun avval mijoz tanlang!', 'warning');
-    // Mijoz tanlash oynasini ochish
     setTimeout(() => mijozTanlash(), 300);
     return;
   }
+
+  // Qarz bo'lsa muddat so'rash
+  if (qarzBor && tanlangan_mijoz && typeof qarzMuddatModal === 'function') {
+    qarzMuddatModal(async (muddat, izoh) => {
+      await sotuvYuborish(muddat, izoh);
+    });
+    return;
+  }
+
+  await sotuvYuborish('', '');
+}
+
+async function sotuvYuborish(qarzMuddat, qarzIzoh) {
 
   const chegirma = parseFloat(document.getElementById('chegirmaInput').value) || 0;
   const jami = chekMahsulotlar.reduce((s,m) => s + m.narxi*m.miqdor, 0);
