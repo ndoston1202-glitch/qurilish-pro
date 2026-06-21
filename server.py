@@ -210,6 +210,21 @@ def init_db():
         )""")
         conn.commit()
     except: pass
+    # v5: sku kodi ustuni
+    try: conn.execute("ALTER TABLE mahsulotlar ADD COLUMN sku TEXT"); conn.commit()
+    except: pass
+    # v6: etiketka shablonlari jadvali
+    try:
+        conn.execute("""CREATE TABLE IF NOT EXISTS etiketka_shablonlar (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nomi TEXT NOT NULL,
+            uzunlik REAL DEFAULT 58,
+            balandlik REAL DEFAULT 30,
+            elementlar TEXT DEFAULT '[]',
+            yaratilgan TEXT DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.commit()
+    except: pass
 
     # v2: mijoz_id sotuvlarda
     try: conn.execute("ALTER TABLE sotuvlar ADD COLUMN mijoz_id INTEGER"); conn.commit()
@@ -570,6 +585,17 @@ O'zbek tilida batafsil javob ber."""
                 rows = conn.execute("SELECT * FROM brendlar ORDER BY nomi").fetchall()
                 return self.send_json(rows_to_list(rows))
 
+            # ETIKETKA SHABLONLARI
+            if path == '/api/etiketka':
+                rows = conn.execute("SELECT * FROM etiketka_shablonlar ORDER BY yaratilgan DESC").fetchall()
+                return self.send_json(rows_to_list(rows))
+
+            m = re.match(r'^/api/etiketka/(\d+)$', path)
+            if m:
+                row = conn.execute("SELECT * FROM etiketka_shablonlar WHERE id=?", (m.group(1),)).fetchone()
+                if not row: return self.send_error_json('Shablon topilmadi', 404)
+                return self.send_json(row_to_dict(row))
+
             m = re.match(r'^/api/brendlar/(\d+)$', path)
             if m:
                 row = conn.execute("SELECT * FROM brendlar WHERE id=?", (m.group(1),)).fetchone()
@@ -892,6 +918,18 @@ O'zbek tilida batafsil javob ber."""
                     conn.commit(); return self.send_json({'muvaffaqiyat':True,'id':r})
                 except: return self.send_error_json("Bu brend allaqachon mavjud!")
 
+            # ETIKETKA SHABLONLARI
+            if path == '/api/etiketka':
+                r = conn.execute(
+                    "INSERT INTO etiketka_shablonlar (nomi,uzunlik,balandlik,elementlar) VALUES (?,?,?,?)",
+                    (body.get('nomi','Yangi shablon'),
+                     body.get('uzunlik', 58),
+                     body.get('balandlik', 30),
+                     json.dumps(body.get('elementlar', []), ensure_ascii=False))
+                ).lastrowid
+                conn.commit()
+                return self.send_json({'muvaffaqiyat':True,'id':r})
+
             if path == '/api/mijozlar':
                 try:
                     r = conn.execute("INSERT INTO mijozlar (ism,familiya,telefon,manzil,izoh) VALUES (?,?,?,?,?)",
@@ -903,8 +941,8 @@ O'zbek tilida batafsil javob ber."""
                 try:
                     mavjud = conn.execute("SELECT id FROM mahsulotlar WHERE LOWER(nomi)=LOWER(?) AND faol=1", (body['nomi'],)).fetchone()
                     if mavjud: return self.send_error_json(f"'{body['nomi']}' nomli mahsulot allaqachon mavjud!")
-                    r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm,sotuvda_korinsin,brend_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('birlik','dona'),
+                    r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,sku,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm,sotuvda_korinsin,brend_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('sku'),body.get('birlik','dona'),
                          body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'))).lastrowid
                     # LOG: mahsulot qo'shildi
                     foydalanuvchi_id = body.get('foydalanuvchi_id')
@@ -1098,6 +1136,18 @@ O'zbek tilida batafsil javob ber."""
                     (body['nomi'],body.get('tavsif',''),body.get('rasm'),m.group(1)))
                 conn.commit(); return self.send_json({'muvaffaqiyat':True})
 
+            m = re.match(r'^/api/etiketka/(\d+)$', path)
+            if m:
+                conn.execute(
+                    "UPDATE etiketka_shablonlar SET nomi=?,uzunlik=?,balandlik=?,elementlar=? WHERE id=?",
+                    (body.get('nomi','Shablon'),
+                     body.get('uzunlik',58),
+                     body.get('balandlik',30),
+                     json.dumps(body.get('elementlar',[]), ensure_ascii=False),
+                     m.group(1))
+                )
+                conn.commit(); return self.send_json({'muvaffaqiyat':True})
+
             m = re.match(r'^/api/mijozlar/(\d+)$', path)
             if m:
                 conn.execute("UPDATE mijozlar SET ism=?,familiya=?,telefon=?,manzil=?,izoh=?,qarz=? WHERE id=?",
@@ -1107,8 +1157,8 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/mahsulotlar/(\d+)$', path)
             if m:
                 eski = conn.execute("SELECT * FROM mahsulotlar WHERE id=?", (m.group(1),)).fetchone()
-                conn.execute("UPDATE mahsulotlar SET nomi=?,kategoriya_id=?,shtrix_kod=?,birlik=?,kelish_narxi=?,sotish_narxi=?,miqdor=?,min_miqdor=?,tavsif=?,rasm=?,sotuvda_korinsin=?,brend_id=?,yangilangan=datetime('now','localtime') WHERE id=?",
-                    (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('birlik','dona'),body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'),m.group(1)))
+                conn.execute("UPDATE mahsulotlar SET nomi=?,kategoriya_id=?,shtrix_kod=?,sku=?,birlik=?,kelish_narxi=?,sotish_narxi=?,miqdor=?,min_miqdor=?,tavsif=?,rasm=?,sotuvda_korinsin=?,brend_id=?,yangilangan=datetime('now','localtime') WHERE id=?",
+                    (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('sku'),body.get('birlik','dona'),body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'),m.group(1)))
                 # LOG: mahsulot tahrirlandi
                 foydalanuvchi_id = body.get('foydalanuvchi_id')
                 fism = ''
@@ -1151,6 +1201,11 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/brendlar/(\d+)$', path)
             if m:
                 conn.execute("DELETE FROM brendlar WHERE id=?", (m.group(1),)); conn.commit()
+                return self.send_json({'muvaffaqiyat':True})
+
+            m = re.match(r'^/api/etiketka/(\d+)$', path)
+            if m:
+                conn.execute("DELETE FROM etiketka_shablonlar WHERE id=?", (m.group(1),)); conn.commit()
                 return self.send_json({'muvaffaqiyat':True})
 
             m = re.match(r'^/api/mahsulotlar/(\d+)$', path)

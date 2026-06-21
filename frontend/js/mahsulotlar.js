@@ -138,7 +138,7 @@ function mahsulotlarKorsatish(royxat) {
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Nomi</th><th>Kategoriya</th><th>Shtrix kod</th>
+            <th>#</th><th>Nomi</th><th>Kategoriya</th><th>SKU</th><th>Shtrix kod</th>
             <th>Birlik</th><th>Kelish narxi</th><th>Sotish narxi</th>
             <th>Miqdor</th><th>Holat</th><th>Sotuv</th><th>Amallar</th>
           </tr>
@@ -154,6 +154,9 @@ function mahsulotlarKorsatish(royxat) {
                 </div>
               </td>
               <td><span class="badge badge-secondary">${m.kategoriya_nomi || '-'}</span></td>
+              <td style="font-family:monospace;font-size:11px">
+                ${m.sku ? `<span style="background:#ede9fe;color:#6d28d9;padding:2px 6px;border-radius:4px">${m.sku}</span>` : '<span style="color:#cbd5e1">—</span>'}
+              </td>
               <td style="font-family:monospace;font-size:12px">${m.shtrix_kod || '-'}</td>
               <td>${m.birlik}</td>
               <td>${formatSum(m.kelish_narxi)}</td>
@@ -165,6 +168,9 @@ function mahsulotlarKorsatish(royxat) {
               <td>
                 <button class="btn btn-warning btn-sm btn-icon" title="Tahrirlash"
                   onclick="mahsulotTahrir(${m.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-secondary btn-sm btn-icon" title="Etiketka chiqarish"
+                  onclick="mahsulotEtiketka(${m.id})" style="background:#8b5cf6;color:white;border-color:#8b5cf6">
+                  <i class="fas fa-tag"></i></button>
                 <button class="btn btn-danger btn-sm btn-icon" title="O'chirish"
                   onclick="mahsulotOchir(${m.id},'${m.nomi.replace(/'/g,"\\'")}',${m.miqdor})">
                   <i class="fas fa-trash"></i></button>
@@ -286,9 +292,28 @@ function mahsulotFormKontent(m = null) {
           <input type="number" name="min_miqdor" min="0" step="0.01" value="${m ? m.min_miqdor : '5'}">
         </div>
       </div>
-      <div class="form-group">
-        <label>Shtrix kod</label>
-        <input type="text" name="shtrix_kod" value="${m ? (m.shtrix_kod || '') : ''}" placeholder="Ixtiyoriy">
+      <div class="form-row">
+        <div class="form-group">
+          <label><i class="fas fa-barcode"></i> Shtrix kod</label>
+          <input type="text" name="shtrix_kod" value="${m ? (m.shtrix_kod || '') : ''}" placeholder="Ixtiyoriy">
+        </div>
+        <div class="form-group">
+          <label><i class="fas fa-hashtag"></i> SKU kodi
+            <span style="font-size:11px;color:#94a3b8;font-weight:normal">(ichki raqam)</span>
+          </label>
+          <div style="display:flex;gap:4px">
+            <input type="text" name="sku" id="skuInput"
+              value="${m ? (m.sku || '') : ''}"
+              placeholder="Masalan: SKU-001"
+              style="flex:1">
+            <button type="button" class="btn btn-secondary btn-sm"
+              onclick="skuAvtoGenerate()"
+              title="Avtomatik yaratish"
+              style="padding:6px 10px;white-space:nowrap">
+              <i class="fas fa-magic"></i>
+            </button>
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label>Tavsif</label>
@@ -368,6 +393,7 @@ async function mahsulotSaqlash(e, id) {
     miqdor: parseFloat(form.miqdor.value) || 0,
     min_miqdor: parseFloat(form.min_miqdor.value) || 5,
     shtrix_kod: form.shtrix_kod.value || null,
+    sku: form.sku?.value?.trim() || null,
     tavsif: form.tavsif.value,
     rasm: document.getElementById('rasmInput')?.value || null,
     sotuvda_korinsin: form.sotuvda_korinsin?.checked ? 1 : 0,
@@ -382,7 +408,18 @@ async function mahsulotSaqlash(e, id) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
-// ===== RASM FUNKSIYALARI =====
+// SKU avtomatik generatsiya
+function skuAvtoGenerate() {
+  const nomiEl = document.querySelector('[name=nomi]');
+  const nomi = nomiEl?.value?.trim() || '';
+  const prefix = nomi.slice(0,3).toUpperCase().replace(/[^A-ZА-ЯA-Z0-9]/gi,'X');
+  const raqam = String(Date.now()).slice(-4);
+  const sku = `${prefix}-${raqam}`;
+  const inp = document.getElementById('skuInput');
+  if (inp) inp.value = sku;
+}
+
+// ===== Jadvalda etiketka tugmasi =====
 // Jadvalda to'g'ridan-to'g'ri bosib toggle qilish
 async function sotuvKorinishToggle(id, joriyHolat, el) {
   const yangi = joriyHolat !== 0 ? 0 : 1;
