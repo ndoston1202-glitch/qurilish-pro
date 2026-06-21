@@ -415,13 +415,6 @@ async function qoldiqHisoboti() {
       </div>
     </div>`;
   await qoldiqYukla();
-}            <i class="fas fa-file-excel"></i> Excel export
-          </button>
-        </div>
-      </div>
-      <div class="card-body" id="qoldiqKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
-    </div>`;
-  await qoldiqYukla();
 }
 
 async function qoldiqYukla() {
