@@ -238,6 +238,19 @@ def init_db():
         )""")
         conn.commit()
     except: pass
+    # v8: integratsiya sozlamalari
+    try:
+        conn.execute("""CREATE TABLE IF NOT EXISTS integratsiya_sozlamalar (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tur TEXT NOT NULL UNIQUE,
+            token TEXT,
+            chat_id TEXT,
+            faol INTEGER DEFAULT 0,
+            sozlamalar TEXT DEFAULT '{}',
+            yaratilgan TEXT DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.commit()
+    except: pass
 
     # v2: mijoz_id sotuvlarda
     try: conn.execute("ALTER TABLE sotuvlar ADD COLUMN mijoz_id INTEGER"); conn.commit()
@@ -296,6 +309,30 @@ def rows_to_list(rows):
 
 def row_to_dict(row):
     return dict(row) if row else None
+
+def telegram_yuborish(token, chat_id, matn):
+    """Telegram API ga xabar yuborish"""
+    import urllib.request
+    if not token or not chat_id:
+        return {'xato': 'Token yoki Chat ID kiritilmagan!'}
+    try:
+        data = json.dumps({
+            'chat_id': chat_id,
+            'text': matn,
+            'parse_mode': 'Markdown'
+        }).encode('utf-8')
+        req = urllib.request.Request(
+            f'https://api.telegram.org/bot{token}/sendMessage',
+            data=data,
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            result = json.loads(r.read().decode('utf-8'))
+            if result.get('ok'):
+                return {'muvaffaqiyat': True, 'xabar_id': result['result']['message_id']}
+            return {'xato': result.get('description', 'Noma\'lum xato')}
+    except Exception as e:
+        return {'xato': str(e)}
 
 MIME = {
     '.html':'text/html','.css':'text/css','.js':'application/javascript',
@@ -772,8 +809,85 @@ O'zbek tilida batafsil javob ber."""
                 """).fetchall())
                 return self.send_json(rows)
 
-            # KASSA HARAKATLARI (kirim/chiqim)
-            if path == '/api/kassa_harakatlari':
+            # INTEGRATSIYA SOZLAMALARI
+            if path == '/api/integratsiya':
+                rows = conn.execute("SELECT * FROM integratsiya_sozlamalar").fetchall()
+                return self.send_json(rows_to_list(rows))
+
+            m_int = re.match(r'^/api/integratsiya/(\w+)$', path)
+            if m_int:
+                row = conn.execute("SELECT * FROM integratsiya_sozlamalar WHERE tur=?", (m_int.group(1),)).fetchone()
+                return self.send_json(row_to_dict(row) if row else {})
+
+            # INTEGRATSIYA SOZLAMALARI
+            if path == '/api/integratsiya':
+                rows = conn.execute("SELECT * FROM integratsiya_sozlamalar").fetchall()
+                return self.send_json(rows_to_list(rows))
+
+            m_int = re.match(r'^/api/integratsiya/(\w+)$', path)
+            if m_int:
+                row = conn.execute("SELECT * FROM integratsiya_sozlamalar WHERE tur=?", (m_int.group(1),)).fetchone()
+                return self.send_json(row_to_dict(row) if row else {})
+
+            # KUNLIK JURNAL (Telegram uchun)
+            if path == '/api/kunlik_jurnal':
+                kun = qp('sana') or datetime.now().strftime('%Y-%m-%d')
+                # Sotuvlar
+                sotuvlar = rows_to_list(conn.execute("""
+                    SELECT s.*,f.ism||' '||f.familiya as kassir_ismi,
+                    COALESCE(mj.ism||' '||COALESCE(mj.familiya,''),'') as mijoz_ismi,
+                    (SELECT COUNT(*) FROM sotuv_tafsilotlari WHERE sotuv_id=s.id) as mah_soni
+                    FROM sotuvlar s LEFT JOIN foydalanuvchilar f ON s.kassir_id=f.id
+                    LEFT JOIN mijozlar mj ON s.mijoz_id=mj.id
+                    WHERE date(s.sana)=? ORDER BY s.sana DESC
+                """, (kun,)).fetchall())
+                # Qaytarishlar
+                qaytarishlar = rows_to_list(conn.execute("""
+                    SELECT q.*,f.ism||' '||f.familiya as kassir_ismi
+                    FROM qaytarishlar q LEFT JOIN foydalanuvchilar f ON q.kassir_id=f.id
+                    WHERE date(q.sana)=? ORDER BY q.sana DESC
+                """, (kun,)).fetchall())
+                # Xarajatlar
+                xarajatlar = rows_to_list(conn.execute(
+                    "SELECT * FROM xarajatlar WHERE date(sana)=? ORDER BY sana DESC", (kun,)).fetchall())
+                # Kassa harakatlari
+                kassa_h = rows_to_list(conn.execute(
+                    "SELECT * FROM kassa_harakatlari WHERE date(sana)=? ORDER BY sana DESC", (kun,)).fetchall())
+                # Foyda (sotuv - kelish narxi)
+                foyda = conn.execute("""
+                    SELECT COALESCE(SUM(st.jami) - SUM(st.miqdor * m.kelish_narxi), 0) as foyda
+                    FROM sotuv_tafsilotlari st
+                    JOIN mahsulotlar m ON st.mahsulot_id=m.id
+                    JOIN sotuvlar s ON st.sotuv_id=s.id
+                    WHERE date(s.sana)=?
+                """, (kun,)).fetchone()
+                # Top mahsulotlar
+                top = rows_to_list(conn.execute("""
+                    SELECT m.nomi, SUM(st.miqdor) as miqdor, SUM(st.jami) as jami, m.birlik
+                    FROM sotuv_tafsilotlari st JOIN mahsulotlar m ON st.mahsulot_id=m.id
+                    JOIN sotuvlar s ON st.sotuv_id=s.id
+                    WHERE date(s.sana)=? GROUP BY m.id ORDER BY jami DESC LIMIT 5
+                """, (kun,)).fetchall())
+                # Kassir bo'yicha
+                kassirlar = rows_to_list(conn.execute("""
+                    SELECT f.ism||' '||f.familiya as ism,
+                    COUNT(*) as sotuvlar, SUM(s.jami_summa) as jami
+                    FROM sotuvlar s JOIN foydalanuvchilar f ON s.kassir_id=f.id
+                    WHERE date(s.sana)=? GROUP BY f.id
+                """, (kun,)).fetchall())
+                return self.send_json({
+                    'kun': kun,
+                    'sotuvlar': sotuvlar,
+                    'qaytarishlar': qaytarishlar,
+                    'xarajatlar': xarajatlar,
+                    'kassa_h': kassa_h,
+                    'foyda': dict(foyda) if foyda else {},
+                    'top': top,
+                    'kassirlar': kassirlar,
+                    'jami_sotuv': sum(s['jami_summa'] for s in sotuvlar),
+                    'jami_qaytarish': sum(q['jami_summa'] for q in qaytarishlar),
+                    'jami_xarajat': sum(x['summa'] for x in xarajatlar),
+                })
                 params = []
                 sql = "SELECT * FROM kassa_harakatlari WHERE 1=1"
                 if qp('boshlanish'): sql += " AND date(sana)>=?"; params.append(qp('boshlanish'))
@@ -1041,8 +1155,50 @@ O'zbek tilida batafsil javob ber."""
                     (body['miqdor'],body.get('kelish_narxi',0),body['mahsulot_id']))
                 conn.commit(); return self.send_json({'muvaffaqiyat':True})
 
-            if path == '/api/xarajatlar':
-                conn.execute("INSERT INTO xarajatlar (nomi,summa,kategoriya,foydalanuvchi_id,izoh) VALUES (?,?,?,?,?)",
+            # INTEGRATSIYA SOZLAMALARI
+            if path == '/api/integratsiya':
+                tur = body.get('tur', 'telegram')
+                mavjud = conn.execute("SELECT id FROM integratsiya_sozlamalar WHERE tur=?", (tur,)).fetchone()
+                if mavjud:
+                    conn.execute("UPDATE integratsiya_sozlamalar SET token=?,chat_id=?,faol=?,sozlamalar=? WHERE tur=?",
+                        (body.get('token',''), body.get('chat_id',''), body.get('faol',0),
+                         json.dumps(body.get('sozlamalar',{}), ensure_ascii=False), tur))
+                else:
+                    conn.execute("INSERT INTO integratsiya_sozlamalar (tur,token,chat_id,faol,sozlamalar) VALUES (?,?,?,?,?)",
+                        (tur, body.get('token',''), body.get('chat_id',''), body.get('faol',0),
+                         json.dumps(body.get('sozlamalar',{}), ensure_ascii=False)))
+                conn.commit()
+                return self.send_json({'muvaffaqiyat': True})
+
+            # TELEGRAM TEST
+            if path == '/api/telegram/test':
+                result = telegram_yuborish(body.get('token',''), body.get('chat_id',''),
+                    "🏗️ Qurilish Do'koni — Test xabari!\n\nBot muvaffaqiyatli ulandi ✅")
+                return self.send_json(result)
+
+            # TELEGRAM KUNLIK JURNAL
+            if path == '/api/telegram/kunlik':
+                int_soz = conn.execute("SELECT * FROM integratsiya_sozlamalar WHERE tur='telegram'").fetchone()
+                if not int_soz or not int_soz['faol']:
+                    return self.send_error_json('Telegram integratsiyasi yoqilmagan!')
+                kun = body.get('sana', datetime.now().strftime('%Y-%m-%d'))
+                js = conn.execute("SELECT COUNT(*) as son, COALESCE(SUM(jami_summa),0) as jami FROM sotuvlar WHERE date(sana)=?", (kun,)).fetchone()
+                jq = conn.execute("SELECT COUNT(*) as son, COALESCE(SUM(jami_summa),0) as jami FROM qaytarishlar WHERE date(sana)=?", (kun,)).fetchone()
+                jx = conn.execute("SELECT COALESCE(SUM(summa),0) as jami FROM xarajatlar WHERE date(sana)=?", (kun,)).fetchone()
+                fp = conn.execute("SELECT COALESCE(SUM(st.jami)-SUM(st.miqdor*m.kelish_narxi),0) as f FROM sotuv_tafsilotlari st JOIN mahsulotlar m ON st.mahsulot_id=m.id JOIN sotuvlar s ON st.sotuv_id=s.id WHERE date(s.sana)=?", (kun,)).fetchone()
+                top = conn.execute("SELECT m.nomi,SUM(st.miqdor) as miq,SUM(st.jami) as j FROM sotuv_tafsilotlari st JOIN mahsulotlar m ON st.mahsulot_id=m.id JOIN sotuvlar s ON st.sotuv_id=s.id WHERE date(s.sana)=? GROUP BY m.id ORDER BY j DESC LIMIT 5", (kun,)).fetchall()
+                kass = conn.execute("SELECT f.ism||' '||f.familiya as ism,COUNT(*) as son,SUM(s.jami_summa) as j FROM sotuvlar s JOIN foydalanuvchilar f ON s.kassir_id=f.id WHERE date(s.sana)=? GROUP BY f.id", (kun,)).fetchall()
+                sof = (js['jami'] or 0) - (jx['jami'] or 0)
+                matn = f"🏗️ *Qurilish Do'koni — Kunlik Hisobot*\n📅 *{kun}*\n\n━━━━━━━━━━━━━━━━━━━━\n💰 *SOTUV*\n• Sotuvlar: *{js['son']}* ta — *{js['jami']:,.0f}* so'm\n• Qaytarish: *{jq['son']}* ta — *{jq['jami']:,.0f}* so'm\n\n📊 *MOLIYA*\n• Xarajat: *{jx['jami']:,.0f}* so'm\n• Foyda: *{fp['f']:,.0f}* so'm\n• Sof balans: *{sof:,.0f}* so'm"
+                if top:
+                    matn += "\n\n🏆 *TOP MAHSULOTLAR*"
+                    for i,m in enumerate(top,1): matn += f"\n{i}. {m['nomi']}: {m['j']:,.0f} so'm"
+                if kass:
+                    matn += "\n\n👤 *KASSIRLAR*"
+                    for k in kass: matn += f"\n• {k['ism']}: {k['son']} ta, {k['j']:,.0f} so'm"
+                matn += "\n━━━━━━━━━━━━━━━━━━━━"
+                result = telegram_yuborish(int_soz['token'], int_soz['chat_id'], matn)
+                return self.send_json(result)
                     (body['nomi'],body['summa'],body.get('kategoriya',''),body.get('foydalanuvchi_id'),body.get('izoh','')))
                 conn.commit(); return self.send_json({'muvaffaqiyat':True})
 
