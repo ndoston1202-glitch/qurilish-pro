@@ -225,6 +225,19 @@ def init_db():
         )""")
         conn.commit()
     except: pass
+    # v7: mahsulot shtrix kodlari (ko'p shtrix kod)
+    try:
+        conn.execute("""CREATE TABLE IF NOT EXISTS mahsulot_shtrix_kodlar (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            mahsulot_id INTEGER NOT NULL,
+            kod TEXT NOT NULL,
+            tur TEXT DEFAULT 'barcode',
+            izoh TEXT,
+            yaratilgan TEXT DEFAULT (datetime('now','localtime')),
+            FOREIGN KEY (mahsulot_id) REFERENCES mahsulotlar(id)
+        )""")
+        conn.commit()
+    except: pass
 
     # v2: mijoz_id sotuvlarda
     try: conn.execute("ALTER TABLE sotuvlar ADD COLUMN mijoz_id INTEGER"); conn.commit()
@@ -590,6 +603,24 @@ O'zbek tilida batafsil javob ber."""
                 rows = conn.execute("SELECT * FROM etiketka_shablonlar ORDER BY yaratilgan DESC").fetchall()
                 return self.send_json(rows_to_list(rows))
 
+            # MAHSULOT SHTRIX KODLARI (ko'p shtrix kod)
+            if path == '/api/shtrix_kodlar':
+                mahsulot_id = qp('mahsulot_id')
+                if mahsulot_id:
+                    rows = conn.execute(
+                        "SELECT * FROM mahsulot_shtrix_kodlar WHERE mahsulot_id=? ORDER BY id",
+                        (mahsulot_id,)).fetchall()
+                else:
+                    rows = conn.execute("SELECT * FROM mahsulot_shtrix_kodlar ORDER BY id").fetchall()
+                return self.send_json(rows_to_list(rows))
+
+            m_sk = re.match(r'^/api/mahsulotlar/(\d+)/shtrix_kodlar$', path)
+            if m_sk:
+                rows = conn.execute(
+                    "SELECT * FROM mahsulot_shtrix_kodlar WHERE mahsulot_id=? ORDER BY id",
+                    (m_sk.group(1),)).fetchall()
+                return self.send_json(rows_to_list(rows))
+
             m = re.match(r'^/api/etiketka/(\d+)$', path)
             if m:
                 row = conn.execute("SELECT * FROM etiketka_shablonlar WHERE id=?", (m.group(1),)).fetchone()
@@ -918,6 +949,18 @@ O'zbek tilida batafsil javob ber."""
                     conn.commit(); return self.send_json({'muvaffaqiyat':True,'id':r})
                 except: return self.send_error_json("Bu brend allaqachon mavjud!")
 
+            # SHTRIX KOD QO'SHISH
+            if path == '/api/shtrix_kodlar':
+                try:
+                    r = conn.execute(
+                        "INSERT INTO mahsulot_shtrix_kodlar (mahsulot_id,kod,tur,izoh) VALUES (?,?,?,?)",
+                        (body['mahsulot_id'], body['kod'],
+                         body.get('tur','barcode'), body.get('izoh',''))).lastrowid
+                    conn.commit()
+                    return self.send_json({'muvaffaqiyat':True,'id':r})
+                except Exception as e:
+                    return self.send_error_json(str(e))
+
             # ETIKETKA SHABLONLARI
             if path == '/api/etiketka':
                 r = conn.execute(
@@ -1206,6 +1249,16 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/etiketka/(\d+)$', path)
             if m:
                 conn.execute("DELETE FROM etiketka_shablonlar WHERE id=?", (m.group(1),)); conn.commit()
+                return self.send_json({'muvaffaqiyat':True})
+
+            m = re.match(r'^/api/shtrix_kodlar/(\d+)$', path)
+            if m:
+                conn.execute("DELETE FROM mahsulot_shtrix_kodlar WHERE id=?", (m.group(1),)); conn.commit()
+                return self.send_json({'muvaffaqiyat':True})
+
+            m_sk = re.match(r'^/api/shtrix_kodlar/(\d+)$', path)
+            if m_sk:
+                conn.execute("DELETE FROM mahsulot_shtrix_kodlar WHERE id=?", (m_sk.group(1),)); conn.commit()
                 return self.send_json({'muvaffaqiyat':True})
 
             m = re.match(r'^/api/mahsulotlar/(\d+)$', path)

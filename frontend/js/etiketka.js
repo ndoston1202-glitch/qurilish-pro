@@ -553,7 +553,7 @@ async function eShablonlarRoyxatYanila() {
 
 // ===== CHIQARISH (PRINT) =====
 function eChiqarish() {
-  const soz = JSON.parse(localStorage.getItem('dokoni_sozlamalar') || '{}');
+  const soz = sozlamalarniOl();
   const w = Math.round(eUzunlik * eMiqyos);
   const h = Math.round(eBalandlik * eMiqyos);
 
@@ -561,7 +561,6 @@ function eChiqarish() {
     const x = el.x * eMiqyos, y = el.y * eMiqyos;
     const kw = el.kenglik * eMiqyos, kh = el.balandlik * eMiqyos;
     const qiymat = eMatnQiymat(el);
-
     if (el.tur === 'matn') return `
       <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;height:${kh}px;
         font-size:${el.shrift_olchami * eMiqyos * 0.7}px;
@@ -587,24 +586,33 @@ function eChiqarish() {
     return '';
   }).join('');
 
-  const printWin = window.open('', '_blank', 'width=600,height=400');
-  printWin.document.write(`<!DOCTYPE html><html><head>
-    <title>Etiketka</title>
-    <style>
-      * { margin:0;padding:0;box-sizing:border-box; }
-      @page { size:${eUzunlik}mm ${eBalandlik}mm; margin:0; }
-      body { width:${eUzunlik}mm; height:${eBalandlik}mm; }
-      .etiketka { position:relative; width:${w}px; height:${h}px; background:white; overflow:hidden; }
-      @media print { body { margin:0; } .controls { display:none; } }
-    </style>
-  </head><body>
-    <div class="controls" style="padding:10px;display:flex;gap:8px;background:#f1f5f9">
-      <button onclick="window.print()" style="padding:6px 16px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer">🖨 Chop etish</button>
-      <button onclick="window.close()" style="padding:6px 16px;background:#e2e8f0;border:none;border-radius:6px;cursor:pointer">Yopish</button>
-    </div>
-    <div class="etiketka">${elementlarHtml}</div>
-  </body></html>`);
-  printWin.document.close();
+  const etiketkaHtml = `
+    <div style="position:relative;width:${w}px;height:${h}px;background:white;overflow:hidden">
+      ${elementlarHtml}
+    </div>`;
+
+  // printer.js orqali chiqarish
+  if (typeof etiketkaChiqar === 'function') {
+    etiketkaChiqar(etiketkaHtml, eUzunlik, eBalandlik);
+  } else {
+    // Fallback
+    const printWin = window.open('', '_blank', 'width=400,height=300');
+    printWin.document.write(`<!DOCTYPE html><html><head>
+      <style>
+        @page{size:${eUzunlik}mm ${eBalandlik}mm;margin:0}
+        body{margin:0;background:white}
+        .btn{padding:6px 14px;border-radius:6px;border:none;cursor:pointer;margin:4px}
+        @media print{.ctrl{display:none}}
+      </style>
+    </head><body>
+      <div class="ctrl" style="padding:8px;background:#f1f5f9">
+        <button class="btn" style="background:#2563eb;color:white" onclick="window.print()">🖨️ Chop etish</button>
+        <button class="btn" style="background:#e2e8f0" onclick="window.close()">Yopish</button>
+      </div>
+      ${etiketkaHtml}
+    </body></html>`);
+    printWin.document.close();
+  }
 }
 
 // ===== MAHSULOTDAN ETIKETKA CHIQARISH =====

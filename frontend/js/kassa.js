@@ -701,43 +701,52 @@ function chekChidir(sotuv, snap) {
       <span>${t.tur==='naqd'?'💵 Naqd':t.tur==='karta'?'💳 Karta':t.tur==='qarz'?'📋 Qarz':'🏦 Bank'}:</span>
       <span>${formatSum(t.summa)}</span>
     </div>`).join('');
-  const kontent = `
-    <div class="chek-print-box" id="chekPrint">
-      <h3 style="text-align:center">🏗️ ${soz.chek_dokoni_nomi||"Qurilish Do'koni"}</h3>
-      ${soz.chek_manzil?`<div style="text-align:center;font-size:11px">${soz.chek_manzil}</div>`:''}
-      ${soz.chek_telefon?`<div style="text-align:center;font-size:11px">Tel: ${soz.chek_telefon}</div>`:''}
-      <div class="chek-print-separator"></div>
-      <div class="chek-print-qator"><span>Chek:</span><span>${sotuv.chek_raqam}</span></div>
-      <div class="chek-print-qator"><span>Kassir:</span><span>${joriyFoydalanuvchi.ism}</span></div>
-      <div class="chek-print-qator"><span>Mijoz:</span><span>${mijozNomi}</span></div>
-      <div class="chek-print-qator"><span>Sana:</span><span>${new Date().toLocaleString('uz-UZ')}</span></div>
-      <div class="chek-print-separator"></div>
+
+  const html = `
+    <div style="font-family:'Courier New',monospace;font-size:12px;padding:8px;width:100%">
+      <h3 style="text-align:center;font-size:14px;margin-bottom:4px">${soz.chek_dokoni_nomi||"Qurilish Do'koni"}</h3>
+      ${soz.chek_manzil?`<div style="text-align:center;font-size:10px">${soz.chek_manzil}</div>`:''}
+      ${soz.chek_telefon?`<div style="text-align:center;font-size:10px">Tel: ${soz.chek_telefon}</div>`:''}
+      <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:3px 0;margin:4px 0;text-align:center">Sotuv cheki</div>
+      <div style="display:flex;justify-content:space-between"><span>Chek:</span><span>${sotuv.chek_raqam}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Kassir:</span><span>${joriyFoydalanuvchi.ism}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Mijoz:</span><span>${mijozNomi}</span></div>
+      <div style="display:flex;justify-content:space-between"><span>Sana:</span><span>${new Date().toLocaleString('uz-UZ')}</span></div>
+      <div style="border-top:1px dashed #000;margin:4px 0"></div>
       ${snap.mahsulotlar.map(m => {
         const chegirmaFoiz = m.chegirma_foiz || 0;
         const chegirmaSom = m.chegirma_som || 0;
         const chegirmaMatn = chegirmaFoiz > 0 ? ` (-${chegirmaFoiz}%)` : chegirmaSom > 0 ? ` (-${formatSum(chegirmaSom)})` : '';
         return `
-        <div class="chek-print-qator"><span>${m.nomi}</span></div>
-        <div class="chek-print-qator">
+        <div>${m.nomi}</div>
+        <div style="display:flex;justify-content:space-between">
           <span>${m.miqdor} x ${formatSum(m.narxi)}${chegirmaMatn}</span>
           <span>${formatSum(m.narxi*m.miqdor)}</span>
         </div>`;
       }).join('')}
-      <div class="chek-print-separator"></div>
-      ${snap.chegirma>0?`<div class="chek-print-qator"><span>Umumiy chegirma:</span><span>-${formatSum(snap.chegirma)}</span></div>`:''}
-      <div class="chek-print-qator" style="font-weight:bold;font-size:14px">
+      <div style="border-top:1px dashed #000;margin:4px 0"></div>
+      ${snap.chegirma>0?`<div style="display:flex;justify-content:space-between"><span>Chegirma:</span><span>-${formatSum(snap.chegirma)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px">
         <span>JAMI:</span><span>${formatSum(sotuv.jami_summa)}</span>
       </div>
-      <div class="chek-print-separator"></div>
+      <div style="border-top:1px dashed #000;margin:4px 0"></div>
       ${tolovHtml}
-      <div class="chek-print-separator"></div>
-      <div style="text-align:center;margin-top:8px">${soz.chek_xabar||"Rahmat! Yana keling! 🙏"}</div>
-    </div>
-    <div class="modal-footer" style="padding:0;margin-top:16px">
-      <button class="btn btn-secondary" onclick="modalYop()">Yopish</button>
-      <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> Chop etish</button>
+      <div style="border-top:1px dashed #000;margin:4px 0"></div>
+      <div style="text-align:center;margin-top:6px;font-size:10px">${soz.chek_xabar||"Rahmat! Yana keling! 🙏"}</div>
     </div>`;
-  modalOch('Sotuv cheki', kontent);
+
+  // printer.js orqali chiqarish
+  if (typeof chekChiqar === 'function') {
+    chekChiqar(html, 'Sotuv cheki');
+  } else {
+    // Fallback: modal orqali
+    modalOch('Sotuv cheki', `
+      ${html}
+      <div class="modal-footer" style="padding:0;margin-top:16px">
+        <button class="btn btn-secondary" onclick="modalYop()">Yopish</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Chop etish</button>
+      </div>`);
+  }
 }
 
 // ===== QAYTARISH MODAL (task 3) =====

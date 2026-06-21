@@ -2,33 +2,40 @@ let mahsulotlarRoyxat = [];
 let kategoriyalarRoyxat = [];
 let joriySahifa = 1;
 const SAHIFADAGI_SON = 20;
-let omborMahsulotTab = 'mahsulotlar'; // 'mahsulotlar' yoki 'ombor'
+let omborMahsulotTab = 'mahsulotlar';
 
 async function mahsulotlarYukla(tab) {
   omborMahsulotTab = tab || 'mahsulotlar';
   const kontent = document.getElementById('asosiyKontent');
+
+  const tablar = [
+    { id:'mahsulotlar', nomi:'Mahsulotlar',   icon:'fa-boxes'     },
+    { id:'ombor',       nomi:'Ombor',          icon:'fa-warehouse' },
+    { id:'etiketka',    nomi:'Etiketka',       icon:'fa-tag'       },
+    { id:'brendlar',    nomi:'Brendlar',       icon:'fa-copyright' },
+  ];
+
   kontent.innerHTML = `
-    <!-- TAB MENU -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:2px solid #e2e8f0;padding-bottom:0">
-      <button onclick="mahsulotlarYukla('mahsulotlar')"
-        style="padding:10px 20px;border:none;background:none;cursor:pointer;font-size:15px;font-weight:600;
-        border-bottom:3px solid ${omborMahsulotTab==='mahsulotlar'?'#2563eb':'transparent'};
-        color:${omborMahsulotTab==='mahsulotlar'?'#2563eb':'#64748b'};margin-bottom:-2px">
-        <i class="fas fa-boxes"></i> Mahsulotlar
-      </button>
-      <button onclick="mahsulotlarYukla('ombor')"
-        style="padding:10px 20px;border:none;background:none;cursor:pointer;font-size:15px;font-weight:600;
-        border-bottom:3px solid ${omborMahsulotTab==='ombor'?'#2563eb':'transparent'};
-        color:${omborMahsulotTab==='ombor'?'#2563eb':'#64748b'};margin-bottom:-2px">
-        <i class="fas fa-warehouse"></i> Ombor
-      </button>
+    <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #e2e8f0">
+      ${tablar.map(t => `
+        <button onclick="mahsulotlarYukla('${t.id}')"
+          style="padding:10px 18px;border:none;background:none;cursor:pointer;font-size:14px;
+          font-weight:600;white-space:nowrap;
+          border-bottom:3px solid ${omborMahsulotTab===t.id?'#2563eb':'transparent'};
+          color:${omborMahsulotTab===t.id?'#2563eb':'#64748b'};margin-bottom:-2px;
+          transition:color 0.2s"
+          onmouseover="if('${t.id}'!=='${omborMahsulotTab}')this.style.color='#1e293b'"
+          onmouseout="if('${t.id}'!=='${omborMahsulotTab}')this.style.color='#64748b'">
+          <i class="fas ${t.icon}" style="margin-right:6px"></i>${t.nomi}
+        </button>`).join('')}
     </div>
     <div id="omborMahsulotKontent"></div>`;
 
-  if (omborMahsulotTab === 'mahsulotlar') {
-    await mahsulotlarTabYukla();
-  } else {
-    await omborYuklaTab();
+  switch(omborMahsulotTab) {
+    case 'mahsulotlar': await mahsulotlarTabYukla(); break;
+    case 'ombor':       await omborYuklaTab();       break;
+    case 'etiketka':    await omborEtiketkaTab();    break;
+    case 'brendlar':    await omborBrendlarTab();    break;
   }
 }
 
@@ -112,6 +119,187 @@ async function omborYuklaTab() {
     kategoriyalar.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nomi}</option>`);
     await Promise.all([inventarYukla(), kirimTarixYukla()]);
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ===== OMBOR ICHIDAGI ETIKETKA TABI =====
+async function omborEtiketkaTab() {
+  const div = document.getElementById('omborMahsulotKontent');
+  div.innerHTML = '<div style="text-align:center;padding:30px"><i class="fas fa-spinner fa-spin fa-2x" style="color:#2563eb"></i></div>';
+  try {
+    const shablonlar = await apiGet('/etiketka');
+    div.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-tag"></i> Etiketka shablonlari</h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="mahsulotlarYukla('etiketka');setTimeout(()=>sozTabAlmashtir('etiketka',document.querySelector('[onclick*=etiketka]')),100)"
+              onclick="sahifaOch('sozlamalar');setTimeout(()=>sozTabAlmashtir('etiketka',document.querySelector('.tab-btn:nth-child(5)')),400)">
+              <i class="fas fa-cog"></i> Sozlamalar
+            </button>
+            <button class="btn btn-primary" onclick="sahifaOch('etiketka')">
+              <i class="fas fa-plus"></i> Yangi shablon
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          ${!shablonlar.length ? `
+            <div class="empty-state" style="padding:40px">
+              <i class="fas fa-tag fa-3x" style="opacity:0.2;margin-bottom:16px"></i>
+              <p style="margin-bottom:16px">Hali shablon yaratilmagan</p>
+              <button class="btn btn-primary" onclick="sahifaOch('etiketka')">
+                <i class="fas fa-plus"></i> Birinchi shablonni yarating
+              </button>
+            </div>` : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">
+              ${shablonlar.map(s => `
+                <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;
+                  transition:all 0.2s;cursor:pointer;background:white"
+                  onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)';this.style.transform='translateY(-2px)'"
+                  onmouseout="this.style.boxShadow='';this.style.transform=''">
+                  <div style="background:#f8fafc;padding:14px;display:flex;align-items:center;
+                    justify-content:center;min-height:70px">
+                    <div style="background:white;border:1px solid #e2e8f0;border-radius:4px;
+                      padding:8px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);text-align:center">
+                      <div style="font-size:9px;font-weight:600;color:#475569">${s.nomi}</div>
+                      <div style="font-size:8px;color:#94a3b8">${s.uzunlik}×${s.balandlik}mm</div>
+                    </div>
+                  </div>
+                  <div style="padding:10px">
+                    <div style="font-weight:700;font-size:13px;margin-bottom:2px">${s.nomi}</div>
+                    <div style="font-size:11px;color:#64748b;margin-bottom:8px">
+                      📏 ${s.uzunlik}×${s.balandlik}mm |
+                      📦 ${JSON.parse(s.elementlar||'[]').length} ta element
+                    </div>
+                    <div style="display:flex;gap:5px">
+                      <button class="btn btn-warning btn-sm" style="flex:1;font-size:11px"
+                        onclick="etiketkaOchirTahrir(${s.id})">
+                        <i class="fas fa-edit"></i> Tahrirlash
+                      </button>
+                      <button class="btn btn-success btn-sm btn-icon"
+                        onclick="omborEtiketkaChiqar(${s.id})" title="Etiketka chiqarish">
+                        <i class="fas fa-print"></i>
+                      </button>
+                      <button class="btn btn-danger btn-sm btn-icon"
+                        onclick="omborEtiketkaOchir(${s.id},'${s.nomi.replace(/'/g,"\\'")}')">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>`).join('')}
+            </div>
+            <div style="padding:10px;color:#64748b;font-size:13px;margin-top:8px">
+              Jami: ${shablonlar.length} ta shablon
+            </div>`}
+        </div>
+      </div>`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function etiketkaOchirTahrir(id) {
+  sahifaOch('etiketka');
+  setTimeout(async () => {
+    await new Promise(r => setTimeout(r, 400));
+    if (typeof eShablonYukla === 'function') eShablonYukla(id);
+  }, 200);
+}
+
+async function omborEtiketkaChiqar(id) {
+  if (typeof sozEtiketkaChiqar === 'function') sozEtiketkaChiqar(id);
+}
+
+function omborEtiketkaOchir(id, nomi) {
+  tasdiqlash(`"${nomi}" shablonini o'chirasizmi?`, async () => {
+    try {
+      await apiDelete('/etiketka/' + id);
+      toast('Shablon o\'chirildi!');
+      omborEtiketkaTab();
+    } catch(e) { toast(e.message, 'error'); }
+  });
+}
+
+// ===== OMBOR ICHIDAGI BRENDLAR TABI =====
+async function omborBrendlarTab() {
+  const div = document.getElementById('omborMahsulotKontent');
+  div.innerHTML = '<div style="text-align:center;padding:30px"><i class="fas fa-spinner fa-spin fa-2x" style="color:#2563eb"></i></div>';
+  try {
+    const brendlar = await apiGet('/brendlar');
+    div.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-copyright"></i> Brendlar</h3>
+          <button class="btn btn-primary" onclick="brendQosh_()">
+            <i class="fas fa-plus"></i> Yangi brend
+          </button>
+        </div>
+        <div class="card-body">
+          ${!brendlar.length ? `
+            <div class="empty-state" style="padding:40px">
+              <i class="fas fa-tag fa-3x" style="opacity:0.2;margin-bottom:16px"></i>
+              <p style="margin-bottom:16px">Hali brend qo'shilmagan</p>
+              <button class="btn btn-primary" onclick="brendQosh_()">
+                <i class="fas fa-plus"></i> Birinchi brendni qo'shing
+              </button>
+            </div>` : `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px">
+              ${brendlar.map(b => `
+                <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;
+                  transition:all 0.2s;background:white"
+                  onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'"
+                  onmouseout="this.style.boxShadow=''">
+                  <div style="height:80px;background:#f8fafc;display:flex;align-items:center;
+                    justify-content:center;overflow:hidden">
+                    ${b.rasm
+                      ? `<img src="${b.rasm}" style="width:100%;height:100%;object-fit:contain;padding:6px">`
+                      : `<i class="fas fa-copyright fa-2x" style="color:#cbd5e1"></i>`}
+                  </div>
+                  <div style="padding:10px">
+                    <div style="font-weight:700;font-size:13px;margin-bottom:2px">${b.nomi}</div>
+                    ${b.tavsif ? `<div style="font-size:11px;color:#64748b;margin-bottom:6px">${b.tavsif}</div>` : ''}
+                    <div style="display:flex;gap:5px">
+                      <button class="btn btn-warning btn-sm" style="flex:1;font-size:11px"
+                        onclick="omborBrendTahrir(${b.id})">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="btn btn-danger btn-sm btn-icon"
+                        onclick="omborBrendOchir(${b.id},'${b.nomi.replace(/'/g,"\\'")}')">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>`).join('')}
+            </div>
+            <div style="padding:10px;color:#64748b;font-size:13px;margin-top:8px">
+              Jami: ${brendlar.length} ta brend
+            </div>`}
+        </div>
+      </div>`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function brendQosh_() {
+  if (typeof brendQosh === 'function') {
+    brendQosh();
+    // Modal yopilgandan keyin tabni yangilash
+    const asl = window._tasdiqlashCallback;
+    setTimeout(() => omborBrendlarTab(), 2000);
+  }
+}
+
+async function omborBrendTahrir(id) {
+  if (typeof brendTahrir === 'function') {
+    await brendTahrir(id);
+    setTimeout(() => omborBrendlarTab(), 1500);
+  }
+}
+
+function omborBrendOchir(id, nomi) {
+  tasdiqlash(`"${nomi}" brendini o'chirasizmi?`, async () => {
+    try {
+      await apiDelete('/brendlar/' + id);
+      toast('Brend o\'chirildi!');
+      omborBrendlarTab();
+    } catch(e) { toast(e.message, 'error'); }
+  });
 }
 
 function mahsulotlarFilter() {
@@ -220,6 +408,8 @@ async function mahsulotTahrir(id) {
     const m = await apiGet('/mahsulotlar/' + id);
     modalOch('Mahsulotni tahrirlash', mahsulotFormKontent(m));
     brendSelectYukla(m.brend_id);
+    // Shtrix kodlarni ham yuklash
+    setTimeout(() => mahsulotTahrirKodlar(id), 100);
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -294,8 +484,30 @@ function mahsulotFormKontent(m = null) {
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label><i class="fas fa-barcode"></i> Shtrix kod</label>
-          <input type="text" name="shtrix_kod" value="${m ? (m.shtrix_kod || '') : ''}" placeholder="Ixtiyoriy">
+          <label><i class="fas fa-barcode"></i> Asosiy shtrix kod</label>
+          <div style="display:flex;gap:4px">
+            <input type="text" name="shtrix_kod"
+              value="${m ? (m.shtrix_kod || '') : ''}"
+              placeholder="Asosiy shtrix kod" style="flex:1">
+            <button type="button" class="btn btn-secondary btn-sm"
+              onclick="qoshimchaKodlarKorsatish(${m ? m.id : 'null'})"
+              title="Ko'p shtrix kod"
+              style="padding:6px 10px;white-space:nowrap">
+              <i class="fas fa-plus"></i> Ko'proq
+            </button>
+          </div>
+          <!-- Qo'shimcha shtrix kodlar -->
+          <div id="qoshimchaKodlarDiv" style="margin-top:6px;display:none">
+            <div id="qoshimchaKodlarRoyxat"></div>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <input type="text" id="yangiKodInput" placeholder="Yangi shtrix kod..."
+                style="flex:1;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px">
+              <button type="button" class="btn btn-success btn-sm"
+                onclick="qoshimchaKodQosh(${m ? m.id : 'null'})">
+                <i class="fas fa-plus"></i> Qo'sh
+              </button>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label><i class="fas fa-hashtag"></i> SKU kodi
@@ -406,6 +618,90 @@ async function mahsulotSaqlash(e, id) {
     modalYop();
     mahsulotlarYukla();
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ===== KO'P SHTRIX KOD FUNKSIYALARI =====
+let _qoshimchaKodlarCache = [];
+
+async function qoshimchaKodlarKorsatish(mahsulot_id) {
+  const div = document.getElementById('qoshimchaKodlarDiv');
+  if (!div) return;
+
+  // Toggle
+  if (div.style.display !== 'none') {
+    div.style.display = 'none'; return;
+  }
+  div.style.display = 'block';
+
+  if (!mahsulot_id || mahsulot_id === 'null') {
+    document.getElementById('qoshimchaKodlarRoyxat').innerHTML =
+      '<div style="font-size:12px;color:#94a3b8;padding:4px">Mahsulot saqlangandan keyin ko\'p kod qo\'shiladi</div>';
+    return;
+  }
+
+  await qoshimchaKodlarYanila(mahsulot_id);
+}
+
+async function qoshimchaKodlarYanila(mahsulot_id) {
+  if (!mahsulot_id || mahsulot_id === 'null') return;
+  try {
+    const kodlar = await apiGet(`/shtrix_kodlar?mahsulot_id=${mahsulot_id}`);
+    _qoshimchaKodlarCache = kodlar;
+    const div = document.getElementById('qoshimchaKodlarRoyxat');
+    if (!div) return;
+
+    if (!kodlar.length) {
+      div.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:4px">Qo\'shimcha kod yo\'q</div>';
+      return;
+    }
+
+    div.innerHTML = kodlar.map(k => `
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f1f5f9">
+        <span style="flex:1;font-family:monospace;font-size:12px;
+          background:#f1f5f9;padding:3px 8px;border-radius:4px">${k.kod}</span>
+        <span style="font-size:10px;color:#94a3b8;min-width:50px">${k.tur||'barcode'}</span>
+        <button type="button" onclick="qoshimchaKodOchir(${k.id},${mahsulot_id})"
+          style="border:none;background:#fee2e2;color:#ef4444;border-radius:4px;
+          padding:2px 8px;cursor:pointer;font-size:12px">×</button>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function qoshimchaKodQosh(mahsulot_id) {
+  const inp = document.getElementById('yangiKodInput');
+  const kod = inp?.value?.trim();
+  if (!kod) { toast('Kod kiriting!', 'warning'); return; }
+
+  if (!mahsulot_id || mahsulot_id === 'null') {
+    toast('Avval mahsulotni saqlang!', 'warning'); return;
+  }
+
+  try {
+    await apiPost('/shtrix_kodlar', {
+      mahsulot_id: parseInt(mahsulot_id),
+      kod,
+      tur: 'barcode'
+    });
+    if (inp) inp.value = '';
+    toast('✅ Kod qo\'shildi!', 'success');
+    await qoshimchaKodlarYanila(mahsulot_id);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function qoshimchaKodOchir(kod_id, mahsulot_id) {
+  try {
+    await apiDelete('/shtrix_kodlar/' + kod_id);
+    toast('Kod o\'chirildi!');
+    await qoshimchaKodlarYanila(mahsulot_id);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// Mahsulot tahrirlashda shtrix kodlar bo'limini yuklash
+async function mahsulotTahrirKodlar(mahsulot_id) {
+  const div = document.getElementById('qoshimchaKodlarDiv');
+  if (!div) return;
+  div.style.display = 'block';
+  await qoshimchaKodlarYanila(mahsulot_id);
 }
 
 // SKU avtomatik generatsiya

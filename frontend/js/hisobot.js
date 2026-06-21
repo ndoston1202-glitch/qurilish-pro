@@ -1,30 +1,88 @@
 function hisobotYukla() {
+// ===== HISOBOTLAR ASOSIY =====
+// Hisobotlar 2 guruhga bo'lingan:
+// 1. Moliyaviy: Kunlik, Oylik, Foyda/Zarar, Xarajatlar
+// 2. Mahsulot: Sotuvlar tarixi, Mahsulot qoldig'i, Qaytarishlar
+
+let hisobotGuruhi = 'moliyaviy'; // 'moliyaviy' yoki 'mahsulot'
+
+function hisobotYukla(guruh) {
+  hisobotGuruhi = guruh || hisobotGuruhi || 'moliyaviy';
   const kontent = document.getElementById('asosiyKontent');
   kontent.innerHTML = `
-    <div class="hisobot-tabs">
-      <button class="tab-btn active" onclick="tabAlmashtir('kunlik',this)"><i class="fas fa-calendar-day"></i> Kunlik</button>
-      <button class="tab-btn" onclick="tabAlmashtir('oylik',this)"><i class="fas fa-calendar-alt"></i> Oylik</button>
-      <button class="tab-btn" onclick="tabAlmashtir('sotuvlar',this)"><i class="fas fa-list"></i> Sotuvlar</button>
-      <button class="tab-btn" onclick="tabAlmashtir('foyda',this)"><i class="fas fa-chart-line"></i> Foyda/Zarar</button>
-      <button class="tab-btn" onclick="tabAlmashtir('qoldiq',this)"><i class="fas fa-boxes"></i> Mahsulot qoldig'i</button>
-      <button class="tab-btn" onclick="tabAlmashtir('qaytarishlar',this)"><i class="fas fa-undo"></i> Qaytarishlar</button>
-      <button class="tab-btn" onclick="tabAlmashtir('xarajatlar',this)"><i class="fas fa-money-bill"></i> Xarajatlar</button>
+    <!-- ASOSIY 2 GURUH -->
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button onclick="hisobotYukla('moliyaviy')"
+        style="flex:1;padding:12px 20px;border-radius:10px;border:2px solid ${hisobotGuruhi==='moliyaviy'?'#2563eb':'#e2e8f0'};
+        background:${hisobotGuruhi==='moliyaviy'?'#2563eb':'white'};
+        color:${hisobotGuruhi==='moliyaviy'?'white':'#64748b'};
+        cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s">
+        <i class="fas fa-chart-line" style="margin-right:8px"></i>Moliyaviy hisobot
+      </button>
+      <button onclick="hisobotYukla('mahsulot')"
+        style="flex:1;padding:12px 20px;border-radius:10px;border:2px solid ${hisobotGuruhi==='mahsulot'?'#8b5cf6':'#e2e8f0'};
+        background:${hisobotGuruhi==='mahsulot'?'#8b5cf6':'white'};
+        color:${hisobotGuruhi==='mahsulot'?'white':'#64748b'};
+        cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s">
+        <i class="fas fa-boxes" style="margin-right:8px"></i>Mahsulot hisoboti
+      </button>
     </div>
+
+    <!-- KICHIK TABLAR -->
+    <div class="hisobot-tabs" id="hisobotTablar" style="margin-bottom:16px"></div>
     <div id="hisobotKontent"></div>`;
-  tabAlmashtir('kunlik', document.querySelector('.tab-btn'));
+
+  if (hisobotGuruhi === 'moliyaviy') {
+    moliyaviyTablarKorsatish();
+  } else {
+    mahsulotTablarKorsatish();
+  }
+}
+
+function moliyaviyTablarKorsatish() {
+  const tabDiv = document.getElementById('hisobotTablar');
+  tabDiv.innerHTML = `
+    <button class="tab-btn active" onclick="tabAlmashtir('kunlik',this)">
+      <i class="fas fa-calendar-day"></i> Kunlik
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('oylik',this)">
+      <i class="fas fa-calendar-alt"></i> Oylik
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('foyda',this)">
+      <i class="fas fa-chart-line"></i> Foyda/Zarar
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('xarajatlar',this)">
+      <i class="fas fa-money-bill"></i> Xarajatlar
+    </button>`;
+  kunlikHisobot();
+}
+
+function mahsulotTablarKorsatish() {
+  const tabDiv = document.getElementById('hisobotTablar');
+  tabDiv.innerHTML = `
+    <button class="tab-btn active" onclick="tabAlmashtir('sotuvlar',this)">
+      <i class="fas fa-list"></i> Sotuvlar tarixi
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('qoldiq',this)">
+      <i class="fas fa-boxes"></i> Mahsulot qoldig'i
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('qaytarishlar',this)">
+      <i class="fas fa-undo"></i> Qaytarishlar
+    </button>`;
+  sotuvlarTarixi();
 }
 
 function tabAlmashtir(tur, btn) {
   document.querySelectorAll('.hisobot-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   switch(tur) {
-    case 'kunlik': kunlikHisobot(); break;
-    case 'oylik': oylikHisobot(); break;
-    case 'sotuvlar': sotuvlarTarixi(); break;
-    case 'foyda': foydaHisoboti(); break;
-    case 'qoldiq': qoldiqHisoboti(); break;
+    case 'kunlik':      kunlikHisobot();         break;
+    case 'oylik':       oylikHisobot();          break;
+    case 'sotuvlar':    sotuvlarTarixi();        break;
+    case 'foyda':       foydaHisoboti();         break;
+    case 'qoldiq':      qoldiqHisoboti();        break;
     case 'qaytarishlar': qaytarishlarHisoboti(); break;
-    case 'xarajatlar': xarajatlarSahifasi(); break;
+    case 'xarajatlar':  xarajatlarSahifasi();   break;
   }
 }
 
@@ -198,39 +256,45 @@ async function sotuvBatafsil(id) {
   } catch(e) { toast(e.message,'error'); }
 }
 
-// Chekni qayta chiqarish (task 3)
+// Chekni qayta chiqarish — printer.js orqali
 async function chekniQaytaChiqar(id) {
   try {
     const s = await apiGet('/sotuvlar/'+id);
     const soz = sozlamalarniOl();
-    const kontent = `
-      <div class="chek-print-box" id="chekPrint">
-        <h3 style="text-align:center">🏗️ ${soz.chek_dokoni_nomi||"Qurilish Do'koni"}</h3>
-        ${soz.chek_manzil?`<div style="text-align:center;font-size:11px">${soz.chek_manzil}</div>`:''}
-        ${soz.chek_telefon?`<div style="text-align:center;font-size:11px">Tel: ${soz.chek_telefon}</div>`:''}
-        <div class="chek-print-separator"></div>
-        <div class="chek-print-qator"><span>Chek:</span><span>${s.chek_raqam}</span></div>
-        <div class="chek-print-qator"><span>Kassir:</span><span>${s.kassir_ismi}</span></div>
-        ${s.mijoz_ismi?`<div class="chek-print-qator"><span>Mijoz:</span><span>${s.mijoz_ismi}</span></div>`:''}
-        <div class="chek-print-qator"><span>Sana:</span><span>${formatSana(s.sana)}</span></div>
-        <div class="chek-print-separator"></div>
+    const html = `
+      <div style="font-family:'Courier New',monospace;font-size:12px;padding:8px;width:100%">
+        <h3 style="text-align:center;font-size:14px;margin-bottom:4px">${soz.chek_dokoni_nomi||"Qurilish Do'koni"}</h3>
+        ${soz.chek_manzil?`<div style="text-align:center;font-size:10px">${soz.chek_manzil}</div>`:''}
+        ${soz.chek_telefon?`<div style="text-align:center;font-size:10px">Tel: ${soz.chek_telefon}</div>`:''}
+        <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:3px 0;margin:4px 0;text-align:center">Sotuv cheki</div>
+        <div style="display:flex;justify-content:space-between"><span>Chek:</span><span>${s.chek_raqam}</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Kassir:</span><span>${s.kassir_ismi}</span></div>
+        ${s.mijoz_ismi?`<div style="display:flex;justify-content:space-between"><span>Mijoz:</span><span>${s.mijoz_ismi}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between"><span>Sana:</span><span>${formatSana(s.sana)}</span></div>
+        <div style="border-top:1px dashed #000;margin:4px 0"></div>
         ${s.tafsilotlar.map(t=>`
-          <div class="chek-print-qator"><span>${t.mahsulot_nomi}</span></div>
-          <div class="chek-print-qator"><span>${t.miqdor} x ${formatSum(t.narxi)}</span><span>${formatSum(t.jami)}</span></div>
-        `).join('')}
-        <div class="chek-print-separator"></div>
-        ${s.chegirma>0?`<div class="chek-print-qator"><span>Chegirma:</span><span>-${formatSum(s.chegirma)}</span></div>`:''}
-        <div class="chek-print-qator" style="font-weight:bold;font-size:14px">
+          <div>${t.mahsulot_nomi}</div>
+          <div style="display:flex;justify-content:space-between">
+            <span>${t.miqdor} x ${formatSum(t.narxi)}</span><span>${formatSum(t.jami)}</span>
+          </div>`).join('')}
+        <div style="border-top:1px dashed #000;margin:4px 0"></div>
+        ${s.chegirma>0?`<div style="display:flex;justify-content:space-between"><span>Chegirma:</span><span>-${formatSum(s.chegirma)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px">
           <span>JAMI:</span><span>${formatSum(s.jami_summa)}</span>
         </div>
-        <div class="chek-print-separator"></div>
-        <div style="text-align:center;margin-top:8px">${soz.chek_xabar||"Rahmat! Yana keling! 🙏"}</div>
-      </div>
-      <div class="modal-footer" style="padding:0;margin-top:16px">
-        <button class="btn btn-secondary" onclick="modalYop()">Yopish</button>
-        <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i> Chop etish</button>
+        <div style="border-top:1px dashed #000;margin:4px 0"></div>
+        <div style="text-align:center;font-size:10px">${soz.chek_xabar||"Rahmat! Yana keling! 🙏"}</div>
       </div>`;
-    modalOch(`Chek — ${s.chek_raqam}`, kontent);
+
+    if (typeof chekChiqar === 'function') {
+      chekChiqar(html, `Chek — ${s.chek_raqam}`);
+    } else {
+      modalOch(`Chek — ${s.chek_raqam}`, html + `
+        <div class="modal-footer" style="padding:0;margin-top:16px">
+          <button class="btn btn-secondary" onclick="modalYop()">Yopish</button>
+          <button class="btn btn-primary" onclick="window.print()">🖨️ Chop etish</button>
+        </div>`);
+    }
   } catch(e) { toast(e.message,'error'); }
 }
 

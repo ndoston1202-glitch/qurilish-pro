@@ -63,6 +63,9 @@ function sozlamalarYukla() {
         <button class="tab-btn" onclick="sozTabAlmashtir('etiketka',this)">
           <i class="fas fa-tag"></i> Etiketka shablonlari
         </button>
+        <button class="tab-btn" onclick="sozTabAlmashtir('printer',this)">
+          <i class="fas fa-print"></i> Printer
+        </button>
       </div>
       <div id="sozKontent"></div>
     </div>`;
@@ -80,6 +83,7 @@ function sozTabAlmashtir(tur, btn) {
     case 'savdo': sozSavdoKorsatish(s); break;
     case 'tolov': sozTolovKorsatish(s); break;
     case 'etiketka': sozEtiketkaKorsatish(); break;
+    case 'printer': printerSozlamalarKorsatish(); break;
   }
 }
 
