@@ -1,10 +1,6 @@
 function hisobotYukla() {
 // ===== HISOBOTLAR ASOSIY =====
-// Hisobotlar 2 guruhga bo'lingan:
-// 1. Moliyaviy: Kunlik, Oylik, Foyda/Zarar, Xarajatlar
-// 2. Mahsulot: Sotuvlar tarixi, Mahsulot qoldig'i, Qaytarishlar
-
-let hisobotGuruhi = 'moliyaviy'; // 'moliyaviy' yoki 'mahsulot'
+let hisobotGuruhi = 'moliyaviy';
 
 function hisobotYukla(guruh) {
   hisobotGuruhi = guruh || hisobotGuruhi || 'moliyaviy';
