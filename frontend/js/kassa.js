@@ -35,7 +35,7 @@ let chekMahsulotlar = [];
 let tanlangan_mijoz = null;
 
 // Ko'p chek ma'lumotlari
-let cheklar = []; // [{id, nom, mahsulotlar, mijoz, chegirma, tolovlar}]
+let cheklar = [];
 let joriyChekId = null;
 let chekIdCounter = 1;
 
@@ -103,7 +103,12 @@ function chekTablarYanila() {
 }
 
 function yangiChekQosh() {
-  joriyChekSaqla(); // Hozirgi chekni saqlash
+  joriyChekSaqla();
+  // Maksimum 5 ta chek
+  if (cheklar.length >= 5) {
+    toast('⚠️ Maksimum 5 ta chek ochilishi mumkin!', 'warning');
+    return;
+  }
   const yangi = yangiChekYarat();
   joriyChekId = yangi.id;
   chekMahsulotlar = [];
@@ -180,10 +185,17 @@ async function kassaYukla() {
   const kontent = document.getElementById('asosiyKontent');
   const soz = sozlamalarniOl();
 
-  // Birinchi chekni yaratish
+  // Birinchi chekni yaratish — faqat bo'sh bo'lsa
   if (cheklar.length === 0) {
     const birinchi = yangiChekYarat('Chek 1');
     joriyChekId = birinchi.id;
+  }
+  // Maksimum 5 ta chek — ortiqchalarini tozalash
+  if (cheklar.length > 5) {
+    cheklar = cheklar.slice(-5);
+    if (!cheklar.find(c => c.id === joriyChekId)) {
+      joriyChekId = cheklar[0].id;
+    }
   }
 
   kontent.innerHTML = `
@@ -543,9 +555,21 @@ async function kassadanMijozSaqla(e) {
 }
 
 function mijozniTanla(id, toliqIsm, telefon, familiya, ism) {
+  // Boshqa cheklardan bu mijozni olib tashlash
+  cheklar.forEach(c => {
+    if (c.id !== joriyChekId && c.mijoz?.id === id) {
+      c.mijoz = null;
+    }
+  });
+
   tanlangan_mijoz = {id, ism, familiya, telefon, toliqIsm};
+  // Joriy chekga ham saqlash
+  const chek = joriyChekOl();
+  if (chek) chek.mijoz = tanlangan_mijoz;
+
   mijozBlokniyaJila();
   kassaXotirasiniSaqla();
+  chekTablarYanila();
   modalYop();
 }
 
