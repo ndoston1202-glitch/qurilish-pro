@@ -29,131 +29,282 @@ function kassaXotirasiniTozala() {
 }
 
 
+// ===== KO'P CHEK (MULTI-ORDER) TIZIMI =====
 let kassaMahsulotlar = [];
 let chekMahsulotlar = [];
 let tanlangan_mijoz = null;
+
+// Ko'p chek ma'lumotlari
+let cheklar = []; // [{id, nom, mahsulotlar, mijoz, chegirma, tolovlar}]
+let joriyChekId = null;
+let chekIdCounter = 1;
+
+function yangiChekYarat(nom) {
+  const id = 'chek_' + (chekIdCounter++);
+  const chek = {
+    id, nom: nom || `Chek ${cheklar.length + 1}`,
+    mahsulotlar: [],
+    mijoz: null,
+    chegirma: 0,
+    tolovlar: [{ tur: 'naqd', summa: 0 }]
+  };
+  cheklar.push(chek);
+  return chek;
+}
+
+function joriyChekOl() {
+  return cheklar.find(c => c.id === joriyChekId) || cheklar[0];
+}
+
+function joriyChekSaqla() {
+  const chek = joriyChekOl();
+  if (!chek) return;
+  chek.mahsulotlar = [...chekMahsulotlar];
+  chek.mijoz = tanlangan_mijoz;
+  chek.chegirma = parseFloat(document.getElementById('chegirmaInput')?.value) || 0;
+  chek.tolovlar = [...tolovQatorlarData];
+}
+
+function chekTablarYanila() {
+  const tabDiv = document.getElementById('chekTablar');
+  if (!tabDiv) return;
+  tabDiv.innerHTML = cheklar.map(c => {
+    const joriy = c.id === joriyChekId;
+    const mahsulotSoni = c.mahsulotlar.length;
+    return `
+      <div onclick="chekTabAlmashtir('${c.id}')"
+        style="display:flex;align-items:center;gap:6px;padding:6px 10px;
+        border-radius:8px;cursor:pointer;white-space:nowrap;min-width:0;
+        background:${joriy?'#2563eb':'#f1f5f9'};
+        color:${joriy?'white':'#475569'};
+        border:2px solid ${joriy?'#2563eb':'#e2e8f0'};
+        transition:all 0.15s">
+        <i class="fas fa-receipt" style="font-size:11px"></i>
+        <span style="font-size:12px;font-weight:600;max-width:80px;overflow:hidden;text-overflow:ellipsis">
+          ${c.mijoz ? c.mijoz.toliqIsm.split(' ')[0] : c.nom}
+        </span>
+        ${mahsulotSoni > 0 ? `<span style="background:${joriy?'rgba(255,255,255,0.3)':'#e2e8f0'};
+          border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700">${mahsulotSoni}</span>` : ''}
+        ${cheklar.length > 1 ? `
+          <button onclick="event.stopPropagation();chekOchir('${c.id}')"
+            style="background:none;border:none;cursor:pointer;padding:0;
+            color:${joriy?'rgba(255,255,255,0.7)':'#94a3b8'};font-size:14px;
+            line-height:1;margin-left:2px" title="Yopish">×</button>` : ''}
+      </div>`;
+  }).join('') + `
+    <button onclick="yangiChekQosh()"
+      style="padding:6px 10px;border-radius:8px;border:2px dashed #e2e8f0;
+      background:white;color:#64748b;cursor:pointer;font-size:12px;
+      display:flex;align-items:center;gap:4px;white-space:nowrap;transition:all 0.15s"
+      onmouseover="this.style.borderColor='#2563eb';this.style.color='#2563eb'"
+      onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#64748b'">
+      <i class="fas fa-plus"></i> Yangi
+    </button>`;
+}
+
+function yangiChekQosh() {
+  joriyChekSaqla(); // Hozirgi chekni saqlash
+  const yangi = yangiChekYarat();
+  joriyChekId = yangi.id;
+  chekMahsulotlar = [];
+  tanlangan_mijoz = null;
+  chekTablarYanila();
+  chekKorsatish();
+  setTimeout(() => {
+    const ch = document.getElementById('chegirmaInput');
+    if (ch) ch.value = '';
+    const tb = document.getElementById('tanlangan_mijoz_blok');
+    if (tb) tb.innerHTML = '<span style="color:#94a3b8;font-size:13px">— Mijozsiz sotuv —</span>';
+    tolovQatorlarData = [{ tur: 'naqd', summa: 0 }];
+    tolovQatorlarKorsatish();
+    chekHisoba();
+  }, 50);
+  toast(`✅ Yangi chek ochildi — ${yangi.nom}`, 'success');
+}
+
+function chekTabAlmashtir(id) {
+  if (id === joriyChekId) return;
+  joriyChekSaqla(); // Hozirgi chekni saqlash
+  joriyChekId = id;
+  const chek = joriyChekOl();
+  if (!chek) return;
+
+  // Yangi chekni yuklash
+  chekMahsulotlar = [...(chek.mahsulotlar || [])];
+  tanlangan_mijoz = chek.mijoz || null;
+  tolovQatorlarData = [...(chek.tolovlar || [{ tur: 'naqd', summa: 0 }])];
+
+  chekTablarYanila();
+  chekKorsatish();
+  setTimeout(() => {
+    const ch = document.getElementById('chegirmaInput');
+    if (ch) ch.value = chek.chegirma || '';
+    if (tanlangan_mijoz) mijozBlokniyaJila();
+    else {
+      const tb = document.getElementById('tanlangan_mijoz_blok');
+      if (tb) tb.innerHTML = '<span style="color:#94a3b8;font-size:13px">— Mijozsiz sotuv —</span>';
+    }
+    tolovQatorlarKorsatish();
+    chekHisoba();
+  }, 50);
+}
+
+function chekOchir(id) {
+  if (cheklar.length <= 1) {
+    chekTozala(); return;
+  }
+  const idx = cheklar.findIndex(c => c.id === id);
+  cheklar.splice(idx, 1);
+
+  if (joriyChekId === id) {
+    joriyChekId = cheklar[Math.max(0, idx - 1)].id;
+    const chek = joriyChekOl();
+    chekMahsulotlar = [...(chek.mahsulotlar || [])];
+    tanlangan_mijoz = chek.mijoz || null;
+    tolovQatorlarData = [...(chek.tolovlar || [{ tur: 'naqd', summa: 0 }])];
+  }
+
+  chekTablarYanila();
+  chekKorsatish();
+  setTimeout(() => {
+    const chek = joriyChekOl();
+    const ch = document.getElementById('chegirmaInput');
+    if (ch) ch.value = chek?.chegirma || '';
+    if (tanlangan_mijoz) mijozBlokniyaJila();
+    tolovQatorlarKorsatish();
+    chekHisoba();
+  }, 50);
+}
 
 async function kassaYukla() {
   const kontent = document.getElementById('asosiyKontent');
   const soz = sozlamalarniOl();
 
+  // Birinchi chekni yaratish
+  if (cheklar.length === 0) {
+    const birinchi = yangiChekYarat('Chek 1');
+    joriyChekId = birinchi.id;
+  }
+
   kontent.innerHTML = `
-    <div class="kassa-wrapper">
-      <div class="kassa-mahsulotlar">
-        <div class="card" style="margin-bottom:12px">
-          <div class="card-body" style="padding:12px">
-            <div class="filter-bar">
-              <input type="text" id="kassaQidiruv" class="search-input"
-                placeholder="🔍 Mahsulot qidirish..." oninput="kassaMahsulotFilter()" style="flex:1">
-              <select id="kassaKat" class="filter-select" onchange="kassaMahsulotFilter()">
-                <option value="">Barcha kategoriyalar</option>
-              </select>
-              <button class="btn btn-secondary btn-sm" onclick="kassaKorinishAlmash()" title="Ko'rinishni almashtir">
-                <i class="fas fa-th-large"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div id="kassaMahsulotGrid" class="${soz.savdoKorinish==='jadval'?'':'mahsulot-grid'}"></div>
+    <div style="display:flex;flex-direction:column;height:calc(100vh - 110px);gap:0">
+
+      <!-- CHEK TABLARI -->
+      <div style="display:flex;align-items:center;gap:6px;padding:8px 12px;
+        background:white;border-bottom:1px solid #e2e8f0;flex-wrap:wrap" id="chekTablar">
       </div>
-      <div class="kassa-chek">
-        <div class="chek-header">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <h3><i class="fas fa-receipt"></i> Joriy chek</h3>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-warning btn-sm" onclick="qaytarishModal()" title="Qaytarish">
-                <i class="fas fa-undo"></i> Qaytarish
-              </button>
-              <button class="btn btn-secondary btn-sm" onclick="chekTozala()">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div class="chek-items" id="chekItems">
-          <div class="empty-state" style="padding:30px">
-            <i class="fas fa-shopping-cart"></i><p>Mahsulot tanlang</p>
-          </div>
-        </div>
-        <div class="chek-footer">
-          <div style="margin-bottom:10px;border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <span style="font-size:13px;font-weight:600;color:#475569"><i class="fas fa-user"></i> Mijoz</span>
-              <button class="btn btn-secondary btn-sm" onclick="mijozTanlash()">
-                <i class="fas fa-search"></i> Tanlash
-              </button>
-            </div>
-            <div id="tanlangan_mijoz_blok">
-              <span style="color:#94a3b8;font-size:13px">— Mijozsiz sotuv —</span>
-            </div>
-          </div>
-          <div class="chek-jami-qator"><span>Jami:</span><span id="chekJami">0 so'm</span></div>
-          <div class="chek-jami-qator">
-            <span>Chegirma:</span>
-            <input type="number" id="chegirmaInput" min="0" placeholder="0"
-              style="width:100px;text-align:right;border:1px solid #e2e8f0;border-radius:4px;padding:4px"
-              oninput="chekHisoba();kassaXotirasiniSaqla()">
-          </div>
-          <div class="chek-jami-qator katta"><span>To'lash:</span><span id="chekYakuniy">0 so'm</span></div>
 
-          <!-- ARALASH TO'LOV TIZIMI -->
-          <div style="margin:10px 0 8px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-            <div style="background:#f8fafc;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
-              <span style="font-size:13px;font-weight:600;color:#475569"><i class="fas fa-credit-card"></i> To'lov</span>
-              <button class="btn btn-secondary btn-sm" onclick="tolovQatorQosh()" style="font-size:11px;padding:3px 8px">
-                <i class="fas fa-plus"></i> Tur qo'sh
-              </button>
-            </div>
-            <div id="tolovQatorlar" style="padding:8px">
-              <!-- Qatorlar bu yerda -->
-            </div>
-            <div style="padding:6px 12px;background:#f0fdf4;display:flex;justify-content:space-between;font-size:13px">
-              <span style="color:#64748b">Qolgan:</span>
-              <span id="tolovQolgan" style="font-weight:700;color:#ef4444">0 so'm</span>
+      <!-- ASOSIY KONTENT -->
+      <div class="kassa-wrapper" style="flex:1;overflow:hidden">
+        <div class="kassa-mahsulotlar">
+          <div class="card" style="margin-bottom:12px">
+            <div class="card-body" style="padding:12px">
+              <div class="filter-bar">
+                <input type="text" id="kassaQidiruv" class="search-input"
+                  placeholder="🔍 Mahsulot qidirish..." oninput="kassaMahsulotFilter()" style="flex:1">
+                <select id="kassaKat" class="filter-select" onchange="kassaMahsulotFilter()">
+                  <option value="">Barcha kategoriyalar</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" onclick="kassaKorinishAlmash()" title="Ko'rinishni almashtir">
+                  <i class="fas fa-th-large"></i>
+                </button>
+              </div>
             </div>
           </div>
-
-          <button class="btn btn-success" style="width:100%;padding:12px;font-size:15px" onclick="sotuvYakunla()">
-            <i class="fas fa-check-circle"></i> Sotishni tasdiqlash
-          </button>
+          <div id="kassaMahsulotGrid" class="${soz.savdoKorinish==='jadval'?'':'mahsulot-grid'}"></div>
+        </div>
+        <div class="kassa-chek">
+          <div class="chek-header">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <h3 id="chekSarlavha" style="font-size:14px"><i class="fas fa-receipt"></i> Joriy chek</h3>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-warning btn-sm" onclick="qaytarishModal()" title="Qaytarish">
+                  <i class="fas fa-undo"></i>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="chekTozala()">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="chek-items" id="chekItems">
+            <div class="empty-state" style="padding:30px">
+              <i class="fas fa-shopping-cart"></i><p>Mahsulot tanlang</p>
+            </div>
+          </div>
+          <div class="chek-footer">
+            <div style="margin-bottom:10px;border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:13px;font-weight:600;color:#475569"><i class="fas fa-user"></i> Mijoz</span>
+                <button class="btn btn-secondary btn-sm" onclick="mijozTanlash()">
+                  <i class="fas fa-search"></i> Tanlash
+                </button>
+              </div>
+              <div id="tanlangan_mijoz_blok">
+                <span style="color:#94a3b8;font-size:13px">— Mijozsiz sotuv —</span>
+              </div>
+            </div>
+            <div class="chek-jami-qator"><span>Jami:</span><span id="chekJami">0 so'm</span></div>
+            <div class="chek-jami-qator">
+              <span>Chegirma:</span>
+              <input type="number" id="chegirmaInput" min="0" placeholder="0"
+                style="width:100px;text-align:right;border:1px solid #e2e8f0;border-radius:4px;padding:4px"
+                oninput="chekHisoba();joriyChekSaqla()">
+            </div>
+            <div class="chek-jami-qator katta"><span>To'lash:</span><span id="chekYakuniy">0 so'm</span></div>
+            <div style="margin:8px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+              <div style="background:#f8fafc;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;font-weight:600;color:#475569"><i class="fas fa-credit-card"></i> To'lov</span>
+                <button class="btn btn-secondary btn-sm" onclick="tolovQatorQosh()" style="font-size:10px;padding:2px 6px">
+                  <i class="fas fa-plus"></i> Qo'sh
+                </button>
+              </div>
+              <div id="tolovQatorlar" style="padding:8px"></div>
+              <div style="padding:4px 12px;background:#f0fdf4;display:flex;justify-content:space-between;font-size:12px">
+                <span style="color:#64748b">Qolgan:</span>
+                <span id="tolovQolgan" style="font-weight:700;color:#ef4444">0 so'm</span>
+              </div>
+            </div>
+            <button class="btn btn-success" style="width:100%;padding:11px;font-size:14px" onclick="sotuvYakunla()">
+              <i class="fas fa-check-circle"></i> Sotishni tasdiqlash
+            </button>
+          </div>
         </div>
       </div>
     </div>`;
 
   try {
-    const [mahsulotlar, kategoriyalar] = await Promise.all([apiGet('/mahsulotlar?kassa=1'), apiGet('/kategoriyalar')]);
+    const [mahsulotlar, kategoriyalar] = await Promise.all([
+      apiGet('/mahsulotlar?kassa=1'), apiGet('/kategoriyalar')
+    ]);
     kassaMahsulotlar = mahsulotlar;
     const sel = document.getElementById('kassaKat');
     kategoriyalar.forEach(k => sel.innerHTML += `<option value="${k.id}">${k.nomi}</option>`);
 
-    // XOTIRADAN YUKLASH (task 4)
-    const xotira = kassaXotirasiniYukla();
-    if (xotira && xotira.chekMahsulotlar.length) {
-      // max miqdorlarni yangilaymiz
-      chekMahsulotlar.forEach(c => {
-        const m = mahsulotlar.find(x => x.id == c.mahsulot_id);
-        if (m) c.max = m.miqdor;
-      });
-      tanlangan_mijoz = xotira.tanlangan_mijoz;
-      chekKorsatish();
-      setTimeout(() => {
-        const chegirmaEl = document.getElementById('chegirmaInput');
-        if (chegirmaEl) chegirmaEl.value = xotira.chegirma || '';
-        if (tanlangan_mijoz) mijozBlokniyaJila();
-        chekHisoba();
-      }, 100);
-      toast('💾 Oxirgi chek qayta yuklandi', 'success');
+    // Joriy chekni yuklash
+    const chek = joriyChekOl();
+    if (chek) {
+      chekMahsulotlar = [...(chek.mahsulotlar || [])];
+      tanlangan_mijoz = chek.mijoz || null;
+      tolovQatorlarData = [...(chek.tolovlar || [{ tur: 'naqd', summa: 0 }])];
     } else {
       chekMahsulotlar = [];
       tanlangan_mijoz = null;
     }
+
+    chekTablarYanila();
     kassaMahsulotKorsatish(kassaMahsulotlar);
-    // To'lov qatorlarini HTML tayyor bo'lgandan keyin boshlash
-    setTimeout(() => tolovQatorlarniBoshlash(), 0);
+    chekKorsatish();
+    setTimeout(() => {
+      if (chek?.chegirma) {
+        const ch = document.getElementById('chegirmaInput');
+        if (ch) ch.value = chek.chegirma;
+      }
+      if (tanlangan_mijoz) mijozBlokniyaJila();
+      tolovQatorlarniBoshlash();
+    }, 0);
   } catch(e) { toast(e.message, 'error'); }
 }
-
-
 // ===== ARALASH TO'LOV TIZIMI =====
 let tolovQatorlarData = [];
 
@@ -515,6 +666,8 @@ function chekGaQosh(mahsulot_id) {
   }
   chekKorsatish();
   kassaXotirasiniSaqla();
+  joriyChekSaqla();
+  chekTablarYanila();
 }
 
 function chekKorsatish() {
@@ -685,6 +838,15 @@ async function sotuvYakunla() {
     };
     kassaXotirasiniTozala();
     chekTozala();
+    // Joriy chekni ham tozalash
+    const chekObj = joriyChekOl();
+    if (chekObj) {
+      chekObj.mahsulotlar = [];
+      chekObj.mijoz = null;
+      chekObj.chegirma = 0;
+      chekObj.tolovlar = [{ tur: 'naqd', summa: 0 }];
+    }
+    chekTablarYanila();
     kassaMahsulotlar = await apiGet('/mahsulotlar?kassa=1');
     kassaMahsulotKorsatish(kassaMahsulotlar);
     tolovQatorlarniBoshlash();
