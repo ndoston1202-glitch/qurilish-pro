@@ -384,20 +384,38 @@ function foydaExcelExport() {
   excelYukla(csv, `foyda_${bosh}_${tug}.csv`);
 }
 
-// ===== MAHSULOT QOLDIG'I HISOBOTI (task 5) =====
+// ===== MAHSULOT QOLDIG'I HISOBOTI =====
 async function qoldiqHisoboti() {
   document.getElementById('hisobotKontent').innerHTML = `
     <div class="card">
       <div class="card-header">
         <h3><i class="fas fa-boxes"></i> Mahsulotlar qoldig'i</h3>
-        <div class="filter-bar">
-          <input type="text" id="qoldiqQidiruv" class="search-input" placeholder="🔍 Qidirish..."
-            oninput="qoldiqFilter()" style="min-width:200px">
+        <div class="filter-bar" style="flex-wrap:wrap">
+          <input type="text" id="qoldiqQidiruv" class="search-input"
+            placeholder="🔍 Mahsulot qidirish..."
+            oninput="qoldiqFilter()" style="min-width:180px">
+          <select id="qoldiqBrendFilter" class="filter-select" onchange="qoldiqFilter()">
+            <option value="">Barcha brendlar</option>
+          </select>
           <select id="qoldiqKatFilter" class="filter-select" onchange="qoldiqFilter()">
             <option value="">Barcha kategoriyalar</option>
           </select>
+          <select id="qoldiqHolatFilter" class="filter-select" onchange="qoldiqFilter()">
+            <option value="">Barcha holat</option>
+            <option value="kam">⚠ Kam qolganlar</option>
+            <option value="yetarli">✅ Yetarlilar</option>
+          </select>
           <button class="btn btn-success btn-sm" onclick="qoldiqExcelExport()">
-            <i class="fas fa-file-excel"></i> Excel export
+            <i class="fas fa-file-excel"></i> Excel
+          </button>
+        </div>
+      </div>
+      <div class="card-body" id="qoldiqKontent">
+        <div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+      </div>
+    </div>`;
+  await qoldiqYukla();
+}            <i class="fas fa-file-excel"></i> Excel export
           </button>
         </div>
       </div>
@@ -408,22 +426,40 @@ async function qoldiqHisoboti() {
 
 async function qoldiqYukla() {
   try {
-    const rows = await apiGet('/hisobot/qoldiq');
+    const [rows, brendlar] = await Promise.all([
+      apiGet('/hisobot/qoldiq'),
+      apiGet('/brendlar')
+    ]);
     window._qoldiqData = rows;
-    // kategoriyalarni to'ldirish
+
+    // Brendlar filterni to'ldirish
+    const brendSel = document.getElementById('qoldiqBrendFilter');
+    if (brendSel && brendlar.length) {
+      brendlar.forEach(b => brendSel.innerHTML += `<option value="${b.id}">${b.nomi}</option>`);
+    }
+
+    // Kategoriyalar filterni to'ldirish
     const katlar = [...new Set(rows.map(r=>r.kategoriya_nomi||'Kategoriyasiz'))].sort();
     const sel = document.getElementById('qoldiqKatFilter');
     if (sel) katlar.forEach(k => sel.innerHTML += `<option>${k}</option>`);
+
     qoldiqKorsatish(rows);
   } catch(e) { toast(e.message,'error'); }
 }
 
 function qoldiqFilter() {
-  const q=(document.getElementById('qoldiqQidiruv')?.value||'').toLowerCase();
-  const kat=document.getElementById('qoldiqKatFilter')?.value||'';
-  const f=(window._qoldiqData||[]).filter(r=>
-    (!q||r.nomi.toLowerCase().includes(q)) &&
-    (!kat||(r.kategoriya_nomi||'Kategoriyasiz')===kat));
+  const q     = (document.getElementById('qoldiqQidiruv')?.value||'').toLowerCase();
+  const kat   = document.getElementById('qoldiqKatFilter')?.value||'';
+  const brend = document.getElementById('qoldiqBrendFilter')?.value||'';
+  const holat = document.getElementById('qoldiqHolatFilter')?.value||'';
+
+  const f = (window._qoldiqData||[]).filter(r => {
+    const qMos     = !q     || r.nomi.toLowerCase().includes(q) || (r.sku||'').toLowerCase().includes(q);
+    const katMos   = !kat   || (r.kategoriya_nomi||'Kategoriyasiz') === kat;
+    const brendMos = !brend || String(r.brend_id) === String(brend);
+    const holatMos = !holat || (holat==='kam' ? r.miqdor<=r.min_miqdor : r.miqdor>r.min_miqdor);
+    return qMos && katMos && brendMos && holatMos;
+  });
   qoldiqKorsatish(f);
 }
 
@@ -443,14 +479,18 @@ function qoldiqKorsatish(rows) {
     </div>
     <div class="table-wrapper"><table>
       <thead><tr>
-        <th>#</th><th>Mahsulot</th><th>Kategoriya</th><th>Birlik</th>
+        <th>#</th><th>Mahsulot</th><th>Brend</th><th>Kategoriya</th><th>Birlik</th>
         <th>Soni</th><th>Kelish narxi</th><th>Sotish narxi</th>
         <th>Kelish qiymati</th><th>Sotish qiymati</th><th>Holat</th>
       </tr></thead>
       <tbody>${rows.map((r,i)=>`
         <tr>
           <td>${i+1}</td>
-          <td><b>${r.nomi}</b></td>
+          <td>
+            <b>${r.nomi}</b>
+            ${r.sku?`<br><span style="font-size:10px;color:#8b5cf6;background:#ede9fe;padding:1px 5px;border-radius:3px">${r.sku}</span>`:''}
+          </td>
+          <td style="font-size:12px">${r.brend_nomi?`<span class="badge badge-warning" style="font-size:11px">${r.brend_nomi}</span>`:'<span style="color:#cbd5e1">—</span>'}</td>
           <td><span class="badge badge-secondary">${r.kategoriya_nomi||'-'}</span></td>
           <td>${r.birlik}</td>
           <td><b>${r.miqdor}</b></td>
@@ -464,7 +504,7 @@ function qoldiqKorsatish(rows) {
         </tr>`).join('')}
       </tbody>
       <tfoot><tr style="background:#f8fafc;font-weight:700">
-        <td colspan="7">JAMI</td>
+        <td colspan="8">JAMI</td>
         <td>${formatSum(jamiKelish)}</td>
         <td>${formatSum(jamiSotish)}</td><td></td>
       </tr></tfoot>

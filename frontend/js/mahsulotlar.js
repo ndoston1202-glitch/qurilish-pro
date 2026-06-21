@@ -11,7 +11,6 @@ async function mahsulotlarYukla(tab) {
   const tablar = [
     { id:'mahsulotlar', nomi:'Mahsulotlar',   icon:'fa-boxes'     },
     { id:'ombor',       nomi:'Ombor',          icon:'fa-warehouse' },
-    { id:'etiketka',    nomi:'Etiketka',       icon:'fa-tag'       },
     { id:'brendlar',    nomi:'Brendlar',       icon:'fa-copyright' },
   ];
 
@@ -34,8 +33,8 @@ async function mahsulotlarYukla(tab) {
   switch(omborMahsulotTab) {
     case 'mahsulotlar': await mahsulotlarTabYukla(); break;
     case 'ombor':       await omborYuklaTab();       break;
-    case 'etiketka':    await omborEtiketkaTab();    break;
     case 'brendlar':    await omborBrendlarTab();    break;
+    default: await mahsulotlarTabYukla(); break;
   }
 }
 
@@ -60,6 +59,11 @@ async function mahsulotlarTabYukla() {
           </button>
           <button class="btn btn-secondary btn-sm" onclick="mahsulotlarExcelImport()">
             <i class="fas fa-file-excel"></i> Excel import
+          </button>
+          <button class="btn btn-secondary btn-sm" id="etiketkaChiqarBtn" style="display:none"
+            onclick="tanlanganlargaEtiketka()">
+            <i class="fas fa-tag" style="color:#8b5cf6"></i>
+            <span id="etiketkaChiqarSon">0</span> ta etiketka
           </button>
           <button class="btn btn-primary" onclick="mahsulotQosh()">
             <i class="fas fa-plus"></i> Yangi mahsulot
@@ -326,6 +330,10 @@ function mahsulotlarKorsatish(royxat) {
       <table>
         <thead>
           <tr>
+            <th style="width:36px">
+              <input type="checkbox" id="hammaTanla" onchange="hammaMahsulotTanla(this)"
+                title="Hammasini tanlash" style="cursor:pointer;width:16px;height:16px">
+            </th>
             <th>#</th><th>Nomi</th><th>Kategoriya</th><th>SKU</th><th>Shtrix kod</th>
             <th>Birlik</th><th>Kelish narxi</th><th>Sotish narxi</th>
             <th>Miqdor</th><th>Holat</th><th>Sotuv</th><th>Amallar</th>
@@ -334,6 +342,11 @@ function mahsulotlarKorsatish(royxat) {
         <tbody>
           ${sahifadagilar.map((m, i) => `
             <tr>
+              <td>
+                <input type="checkbox" class="mah-checkbox" value="${m.id}"
+                  onchange="etiketkaCheckOzgartir()"
+                  style="cursor:pointer;width:16px;height:16px">
+              </td>
               <td>${bosh + i + 1}</td>
               <td>
                 <div style="display:flex;align-items:center;gap:8px">
@@ -618,6 +631,146 @@ async function mahsulotSaqlash(e, id) {
     modalYop();
     mahsulotlarYukla();
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ===== CHECKBOX + KO'P ETIKETKA =====
+function hammaMahsulotTanla(chk) {
+  document.querySelectorAll('.mah-checkbox').forEach(c => c.checked = chk.checked);
+  etiketkaCheckOzgartir();
+}
+
+function etiketkaCheckOzgartir() {
+  const tanlangan = document.querySelectorAll('.mah-checkbox:checked');
+  const btn = document.getElementById('etiketkaChiqarBtn');
+  const son = document.getElementById('etiketkaChiqarSon');
+  if (btn) btn.style.display = tanlangan.length > 0 ? 'flex' : 'none';
+  if (son) son.textContent = tanlangan.length;
+  // Hamma tanlash checkboxni yangilash
+  const hammasi = document.querySelectorAll('.mah-checkbox');
+  const hammaChk = document.getElementById('hammaTanla');
+  if (hammaChk && hammasi.length > 0) {
+    hammaChk.checked = tanlangan.length === hammasi.length;
+    hammaChk.indeterminate = tanlangan.length > 0 && tanlangan.length < hammasi.length;
+  }
+}
+
+async function tanlanganlargaEtiketka() {
+  const tanlangan = [...document.querySelectorAll('.mah-checkbox:checked')];
+  if (!tanlangan.length) { toast('Mahsulot tanlanmagan!', 'warning'); return; }
+
+  const idlar = tanlangan.map(c => parseInt(c.value));
+
+  // Shablon tanlash
+  try {
+    const shablonlar = await apiGet('/etiketka');
+    if (!shablonlar.length) {
+      toast('Avval etiketka shabloni yarating!', 'warning');
+      sahifaOch('etiketka');
+      return;
+    }
+    modalOch(`🏷️ ${idlar.length} ta mahsulotga etiketka`, `
+      <p style="color:#64748b;font-size:13px;margin-bottom:12px">
+        <b>${idlar.length}</b> ta tanlangan mahsulot uchun shablon tanlang:
+      </p>
+      <div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+        ${shablonlar.map(s => `
+          <div onclick="kopEtiketkaChiqar([${idlar.join(',')}],${s.id})"
+            style="padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;
+            display:flex;justify-content:space-between;align-items:center"
+            onmouseover="this.style.background='#f0f9ff';this.style.borderColor='#2563eb'"
+            onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0'">
+            <div>
+              <div style="font-weight:600;font-size:14px">${s.nomi}</div>
+              <div style="font-size:11px;color:#64748b">${s.uzunlik}×${s.balandlik}mm</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:#94a3b8"></i>
+          </div>`).join('')}
+      </div>
+      <div class="modal-footer" style="padding:0;margin-top:12px">
+        <button class="btn btn-secondary" onclick="modalYop()">Bekor</button>
+      </div>`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function kopEtiketkaChiqar(mahsulotIdlar, shablon_id) {
+  modalYop();
+  try {
+    const shablon = await apiGet('/etiketka/' + shablon_id);
+    const elementlar = JSON.parse(shablon.elementlar || '[]');
+    const soz = printerSozlamalariniOl ? printerSozlamalariniOl() : {};
+    const nusxa = soz.etiketka_nusxa || 1;
+
+    // Har mahsulot uchun etiketka tayyorlaymiz
+    const mahsulotlar = await Promise.all(mahsulotIdlar.map(id => apiGet('/mahsulotlar/' + id)));
+
+    const w = Math.round(shablon.uzunlik * 3.78);
+    const h = Math.round(shablon.balandlik * 3.78);
+
+    // Har mahsulot uchun etiketka HTML
+    let barcha = '';
+    mahsulotlar.forEach((m, mi) => {
+      for (let n = 0; n < nusxa; n++) {
+        const etiketkaHtml = elementlar.map(el => {
+          const x = el.x * 3.78, y = el.y * 3.78;
+          const kw = el.kenglik * 3.78, kh = el.balandlik * 3.78;
+          const sozQiymat = JSON.parse(localStorage.getItem('dokoni_sozlamalar') || '{}');
+          const qiymat = {
+            mahsulot_nomi: m.nomi, narxi: formatSum(m.sotish_narxi),
+            shtrix_kod: m.shtrix_kod || m.sku || '', sku: m.sku || '',
+            kategoriya: m.kategoriya_nomi || '', birlik: m.birlik,
+            kompaniya: sozQiymat.chek_dokoni_nomi || "Qurilish Do'koni",
+            erkin: el.qiymat || ''
+          }[el.maydon] || el.qiymat || '';
+
+          if (el.tur === 'matn') return `
+            <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;height:${kh}px;
+              font-size:${el.shrift_olchami * 3.78 * 0.7}px;font-weight:${el.qalin?'bold':'normal'};
+              font-style:${el.kursiv?'italic':'normal'};color:${el.rang||'#000'};
+              text-align:${el.hizalash||'left'};overflow:hidden;white-space:nowrap;
+              display:flex;align-items:center;padding:0 2px">${qiymat}</div>`;
+          if (el.tur === 'chiziq') return `
+            <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;
+              border-top:${el.qalinlik||1}px solid ${el.rang||'#000'}"></div>`;
+          return '';
+        }).join('');
+
+        const isLast = mi === mahsulotlar.length - 1 && n === nusxa - 1;
+        barcha += `
+          <div style="position:relative;width:${w}px;height:${h}px;background:white;
+            overflow:hidden;${!isLast?'page-break-after:always':''}">
+            ${etiketkaHtml}
+          </div>`;
+      }
+    });
+
+    // Print oynasi
+    const printWin = window.open('', '_blank', `width=${w+100},height=${h*2+150}`);
+    printWin.document.write(`<!DOCTYPE html><html><head>
+      <title>Etiketkalar (${mahsulotlar.length} ta)</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        @page{size:${shablon.uzunlik}mm ${shablon.balandlik}mm;margin:0}
+        body{background:white}
+        .ctrl{padding:8px 12px;background:#f1f5f9;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .ctrl button{padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600}
+        @media print{.ctrl{display:none}}
+      </style>
+    </head><body>
+      <div class="ctrl">
+        <button style="background:#2563eb;color:white" onclick="window.print()">
+          🖨️ ${mahsulotlar.length} ta mahsulot, ${mahsulotlar.length * nusxa} ta etiketka chop etish
+        </button>
+        <button style="background:#e2e8f0" onclick="window.close()">Yopish</button>
+        <span style="font-size:11px;color:#64748b">
+          📐 ${shablon.uzunlik}×${shablon.balandlik}mm | 📋 ${nusxa} nusxa/mahsulot
+        </span>
+      </div>
+      ${barcha}
+    </body></html>`);
+    printWin.document.close();
+
+    toast(`✅ ${mahsulotlar.length} ta mahsulot, ${mahsulotlar.length * nusxa} ta etiketka!`, 'success');
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 // ===== KO'P SHTRIX KOD FUNKSIYALARI =====

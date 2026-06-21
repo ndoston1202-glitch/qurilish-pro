@@ -760,11 +760,14 @@ O'zbek tilida batafsil javob ber."""
             if path == '/api/hisobot/qoldiq':
                 rows = rows_to_list(conn.execute("""
                     SELECT m.id, m.nomi, m.birlik, m.kelish_narxi, m.sotish_narxi,
-                        m.miqdor, m.min_miqdor, k.nomi as kategoriya_nomi,
+                        m.miqdor, m.min_miqdor, m.sku, m.shtrix_kod,
+                        m.brend_id, b.nomi as brend_nomi,
+                        k.nomi as kategoriya_nomi,
                         m.miqdor * m.kelish_narxi as kelish_qiymati,
                         m.miqdor * m.sotish_narxi as sotish_qiymati
                     FROM mahsulotlar m
                     LEFT JOIN kategoriyalar k ON m.kategoriya_id=k.id
+                    LEFT JOIN brendlar b ON m.brend_id=b.id
                     WHERE m.faol=1 ORDER BY m.nomi
                 """).fetchall())
                 return self.send_json(rows)
