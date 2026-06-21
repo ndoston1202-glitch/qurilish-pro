@@ -1,4 +1,3 @@
-function hisobotYukla() {
 // ===== HISOBOTLAR ASOSIY =====
 let hisobotGuruhi = 'moliyaviy';
 
