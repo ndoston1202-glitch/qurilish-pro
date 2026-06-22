@@ -5,6 +5,9 @@ function qarzMuddatModal(callback) {
   const bugun = new Date();
   const default30 = new Date(bugun.getTime() + 30*24*60*60*1000).toISOString().split('T')[0];
 
+  // callback ni global o'zgaruvchiga saqlaymiz — HTML onclick da ishlatish uchun
+  window._qarzMuddatCallback = callback;
+
   modalOch('📋 Qarz muddatini belgilang', `
     <div>
       <div style="background:#fff1f2;border:1px solid #fecaca;border-radius:8px;
@@ -37,10 +40,10 @@ function qarzMuddatModal(callback) {
           style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px">
       </div>
       <div class="modal-footer" style="padding:0">
-        <button class="btn btn-secondary" onclick="modalYop();(${callback.toString()})('')">
+        <button class="btn btn-secondary" onclick="modalYop();window._qarzMuddatCallback('','')">
           Muddatsiz davom etish
         </button>
-        <button class="btn btn-danger" onclick="qarzMuddatTasdiqlash(${callback.toString()})">
+        <button class="btn btn-danger" onclick="qarzMuddatTasdiqlash()">
           <i class="fas fa-check"></i> Tasdiqlash
         </button>
       </div>
@@ -57,11 +60,14 @@ function qarzMuddatBelgila(kunlar) {
   document.getElementById('qarzMuddatInp').value = d.toISOString().split('T')[0];
 }
 
-function qarzMuddatTasdiqlash(callback) {
+function qarzMuddatTasdiqlash() {
   const muddat = document.getElementById('qarzMuddatInp')?.value || '';
   const izoh   = document.getElementById('qarzIzohInp')?.value  || '';
   modalYop();
-  callback(muddat, izoh);
+  if (typeof window._qarzMuddatCallback === 'function') {
+    window._qarzMuddatCallback(muddat, izoh);
+    window._qarzMuddatCallback = null;
+  }
 }
 
 // ===== QARZLAR SAHIFASI — KANBAN KO'RINISHI =====
