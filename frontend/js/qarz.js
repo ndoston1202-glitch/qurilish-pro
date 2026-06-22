@@ -64,103 +64,283 @@ function qarzMuddatTasdiqlash(callback) {
   callback(muddat, izoh);
 }
 
-// ===== QARZLAR SAHIFASI (Kassa hisobi ichida) =====
+// ===== QARZLAR SAHIFASI — KANBAN KO'RINISHI =====
 async function qarzlarSahifaYukla() {
   const div = document.getElementById('asosiyKontent');
-  const bugun = bugunSana();
-
   div.innerHTML = `
-    <div style="max-width:1000px">
+    <div>
       <!-- STATISTIKA -->
       <div class="stats-grid" style="margin-bottom:16px" id="qarzStatDiv">
-        <div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+        <div style="text-align:center;padding:20px"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
       </div>
 
-      <!-- QARZLAR JADVALI -->
-      <div class="card">
-        <div class="card-header">
-          <h3><i class="fas fa-clock" style="color:#ef4444"></i> Qarzlar jadvali</h3>
-          <div class="filter-bar">
-            <select id="qarzHolatFilter" class="filter-select" onchange="qarzlarYukla()">
-              <option value="ochiq">Ochiq qarzlar</option>
-              <option value="kechikkan">Kechikkanlar</option>
-              <option value="">Barchasi</option>
-            </select>
-            <input type="text" id="qarzQidiruv" class="search-input"
-              placeholder="🔍 Mijoz qidirish..." oninput="qarzFilter()"
-              style="width:180px">
-          </div>
+      <!-- FILTER VA QIDIRUV -->
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+        <input type="text" id="qarzQidiruv" class="search-input"
+          placeholder="🔍 Mijoz qidirish..." oninput="qarzKanbanFilter()" style="flex:1;min-width:200px">
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary btn-sm" onclick="qarzKorinishAlmash('kanban')" id="btnKanban"
+            style="font-size:12px;background:#2563eb;color:white;border-color:#2563eb">
+            <i class="fas fa-columns"></i> Ustunlar
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="qarzKorinishAlmash('jadval')" id="btnJadval"
+            style="font-size:12px">
+            <i class="fas fa-list"></i> Jadval
+          </button>
         </div>
-        <div class="card-body" id="qarzlarJadval">
-          <div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+      </div>
+
+      <!-- KANBAN USTUNLAR -->
+      <div id="qarzKanbanDiv" style="display:flex;gap:14px;overflow-x:auto;padding-bottom:16px;align-items:flex-start">
+        <div style="text-align:center;padding:40px;width:100%">
+          <i class="fas fa-spinner fa-spin fa-2x" style="color:#2563eb"></i>
+        </div>
+      </div>
+
+      <!-- JADVAL KO'RINISH (yashirin) -->
+      <div id="qarzJadvalDiv" style="display:none">
+        <div class="card">
+          <div class="card-body" id="qarzlarJadval"></div>
         </div>
       </div>
     </div>`;
 
-  await qarzlarYukla();
+  await qarzKanbanYukla();
   await qarzStatYukla();
+}
+
+let _qarzKanbanData = [];
+let _qarzKorinish = 'kanban';
+
+async function qarzKanbanYukla() {
+  try {
+    _qarzKanbanData = await apiGet('/qarz_tarixi?holat=ochiq');
+    qarzKanbanKorsatish(_qarzKanbanData);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function qarzKanbanFilter() {
+  const q = (document.getElementById('qarzQidiruv')?.value || '').toLowerCase();
+  const f = _qarzKanbanData.filter(x =>
+    (x.mijoz_ismi||'').toLowerCase().includes(q) ||
+    (x.mijoz_telefon||'').includes(q));
+  if (_qarzKorinish === 'kanban') qarzKanbanKorsatish(f);
+  else qarzJadvalKorsatish(f);
+}
+
+function qarzKorinishAlmash(tur) {
+  _qarzKorinish = tur;
+  const kanbanDiv = document.getElementById('qarzKanbanDiv');
+  const jadvalDiv = document.getElementById('qarzJadvalDiv');
+  const btnK = document.getElementById('btnKanban');
+  const btnJ = document.getElementById('btnJadval');
+
+  if (tur === 'kanban') {
+    kanbanDiv.style.display = 'flex';
+    jadvalDiv.style.display = 'none';
+    btnK.style.background = '#2563eb'; btnK.style.color = 'white'; btnK.style.borderColor = '#2563eb';
+    btnJ.style.background = ''; btnJ.style.color = ''; btnJ.style.borderColor = '';
+    qarzKanbanKorsatish(_qarzKanbanData);
+  } else {
+    kanbanDiv.style.display = 'none';
+    jadvalDiv.style.display = '';
+    btnJ.style.background = '#2563eb'; btnJ.style.color = 'white'; btnJ.style.borderColor = '#2563eb';
+    btnK.style.background = ''; btnK.style.color = ''; btnK.style.borderColor = '';
+    qarzJadvalKorsatish(_qarzKanbanData);
+  }
+}
+
+function qarzKanbanKorsatish(royxat) {
+  const wrap = document.getElementById('qarzKanbanDiv');
+  if (!wrap) return;
+
+  // Ustunlar ta'rifi
+  const ustunlar = [
+    {
+      id: 'kechikkan',
+      nomi: 'Muddati o\'tgan',
+      rang: '#ef4444', bg: '#fff1f2', border: '#fecaca',
+      icon: 'fa-exclamation-circle',
+      filter: q => q.status === 'kechikkan',
+    },
+    {
+      id: 'bugun',
+      nomi: 'Bugun to\'lanadi',
+      rang: '#f97316', bg: '#fff7ed', border: '#fed7aa',
+      icon: 'fa-clock',
+      filter: q => q.status === 'bugun',
+    },
+    {
+      id: 'bir_kun',
+      nomi: '1 kun qoldi',
+      rang: '#eab308', bg: '#fefce8', border: '#fde68a',
+      icon: 'fa-hourglass-half',
+      filter: q => q.status === 'yaqin' && q.kechikkan_kun === -1,
+    },
+    {
+      id: 'kelajak',
+      nomi: 'Kelajakda',
+      rang: '#2563eb', bg: '#eff6ff', border: '#bfdbfe',
+      icon: 'fa-calendar-alt',
+      filter: q => q.status === 'normal' || (q.status === 'yaqin' && q.kechikkan_kun !== -1),
+    },
+    {
+      id: 'muddatsiz',
+      nomi: 'Muddatsiz',
+      rang: '#64748b', bg: '#f8fafc', border: '#e2e8f0',
+      icon: 'fa-infinity',
+      filter: q => q.status === 'muddatsiz',
+    },
+  ];
+
+  wrap.innerHTML = ustunlar.map(u => {
+    const cards = royxat.filter(u.filter);
+    const jamiSumma = cards.reduce((s,q) => s+(q.qoldi||0), 0);
+
+    return `
+      <div style="min-width:260px;max-width:300px;flex:1;
+        background:${u.bg};border:1px solid ${u.border};border-radius:12px;overflow:hidden">
+
+        <!-- USTUN SARLAVHA -->
+        <div style="padding:12px 14px;border-bottom:1px solid ${u.border};
+          display:flex;align-items:center;justify-content:space-between;
+          background:white;position:sticky;top:0">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${u.rang}"></div>
+            <span style="font-weight:700;font-size:13px;color:#1e293b">${u.nomi}</span>
+            <span style="background:${u.rang};color:white;border-radius:10px;
+              padding:1px 8px;font-size:11px;font-weight:700">${cards.length}</span>
+          </div>
+          ${jamiSumma > 0 ? `
+            <span style="font-size:11px;font-weight:700;color:${u.rang}">
+              ${formatSum(jamiSumma)}
+            </span>` : ''}
+        </div>
+
+        <!-- KARTALAR -->
+        <div style="padding:10px;display:flex;flex-direction:column;gap:8px;
+          max-height:calc(100vh - 280px);overflow-y:auto">
+          ${cards.length === 0 ? `
+            <div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px">
+              <i class="fas ${u.icon}" style="font-size:24px;opacity:0.3;display:block;margin-bottom:8px"></i>
+              Yo'q
+            </div>` :
+            cards.map(q => qarzKartaHtml(q, u.rang)).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function qarzKartaHtml(q, rang) {
+  const qoldirKun = q.kechikkan_kun !== undefined ? Math.abs(q.kechikkan_kun) : 0;
+  const muddatMatn = q.muddat
+    ? (q.status === 'kechikkan'
+        ? `<span style="color:#ef4444;font-weight:600">
+            <i class="fas fa-exclamation-triangle" style="font-size:10px"></i>
+            ${qoldirKun > 0 ? qoldirKun+' kun kechikdi' : 'Kechikkan'}
+           </span>`
+        : `<span style="color:#64748b"><i class="fas fa-calendar" style="font-size:10px"></i> ${q.muddat}</span>`)
+    : `<span style="color:#94a3b8"><i class="fas fa-infinity" style="font-size:10px"></i> Muddatsiz</span>`;
+
+  return `
+    <div style="background:white;border-radius:8px;padding:12px;
+      border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.06);
+      border-left:3px solid ${rang};cursor:default"
+      onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
+      onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'">
+
+      <!-- MIJOZ ISMI -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:${rang}22;
+          display:flex;align-items:center;justify-content:center;
+          color:${rang};font-weight:700;font-size:12px;flex-shrink:0">
+          ${(q.mijoz_ismi||'?')[0].toUpperCase()}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;white-space:nowrap;
+            overflow:hidden;text-overflow:ellipsis">${q.mijoz_ismi||'—'}</div>
+          ${q.mijoz_telefon
+            ? `<div style="font-size:11px;color:#64748b">${q.mijoz_telefon}</div>`
+            : ''}
+        </div>
+      </div>
+
+      <!-- SUMMA -->
+      <div style="display:flex;justify-content:space-between;align-items:center;
+        margin-bottom:8px;padding:6px 8px;background:#f8fafc;border-radius:6px">
+        <div>
+          <div style="font-size:10px;color:#94a3b8">Qoldi</div>
+          <div style="font-size:15px;font-weight:700;color:${rang}">${formatSum(q.qoldi||0)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:#94a3b8">Jami qarz</div>
+          <div style="font-size:12px;color:#64748b">${formatSum(q.summa||0)}</div>
+        </div>
+      </div>
+
+      <!-- MUDDAT -->
+      <div style="font-size:11px;margin-bottom:10px">${muddatMatn}</div>
+
+      <!-- TUGMALAR -->
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-success btn-sm" style="flex:1;font-size:11px;padding:5px 8px"
+          onclick="qarzTolashModal(${q.id},'${(q.mijoz_ismi||'').replace(/'/g,"\\'")}',${q.qoldi||0})">
+          <i class="fas fa-check"></i> To'lash
+        </button>
+        <button class="btn btn-secondary btn-sm btn-icon" style="font-size:11px"
+          onclick="qarzMuddatOzgartir(${q.id},'${q.muddat||''}')"
+          title="Muddatni o'zgartirish">
+          <i class="fas fa-calendar"></i>
+        </button>
+      </div>
+    </div>`;
 }
 
 async function qarzStatYukla() {
   try {
     const barchasi = await apiGet('/qarz_tarixi?holat=ochiq');
-    const bugun = bugunSana();
     const kechikkan = barchasi.filter(q => q.status === 'kechikkan');
     const bugungi   = barchasi.filter(q => q.status === 'bugun');
     const yaqin     = barchasi.filter(q => q.status === 'yaqin');
     const jamiQarz  = barchasi.reduce((s,q) => s+(q.qoldi||0), 0);
 
     document.getElementById('qarzStatDiv').innerHTML = `
-      <div class="stat-card" style="cursor:pointer" onclick="document.getElementById('qarzHolatFilter').value='kechikkan';qarzlarYukla()">
+      <div class="stat-card" style="cursor:pointer" onclick="qarzKanbanFiltri('kechikkan')">
         <div class="stat-icon red"><i class="fas fa-exclamation-circle"></i></div>
-        <div class="stat-info">
-          <h3 style="color:#ef4444">${kechikkan.length}</h3>
-          <p>Kechikkan qarzlar</p>
-        </div>
+        <div class="stat-info"><h3 style="color:#ef4444">${kechikkan.length}</h3><p>Kechikkan</p></div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" style="cursor:pointer" onclick="qarzKanbanFiltri('bugun')">
         <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
-        <div class="stat-info">
-          <h3 style="color:#f59e0b">${bugungi.length + yaqin.length}</h3>
-          <p>Bugun/3 kun ichida</p>
-        </div>
+        <div class="stat-info"><h3 style="color:#f59e0b">${bugungi.length}</h3><p>Bugun to'lanadi</p></div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="qarzKanbanFiltri('yaqin')">
+        <div class="stat-icon" style="background:#fef9c3"><i class="fas fa-hourglass-half" style="color:#eab308"></i></div>
+        <div class="stat-info"><h3 style="color:#eab308">${yaqin.length}</h3><p>3 kun ichida</p></div>
       </div>
       <div class="stat-card">
         <div class="stat-icon blue"><i class="fas fa-list"></i></div>
-        <div class="stat-info"><h3>${barchasi.length}</h3><p>Jami ochiq qarz</p></div>
+        <div class="stat-info"><h3>${barchasi.length}</h3><p>Jami ochiq</p></div>
       </div>
       <div class="stat-card">
         <div class="stat-icon red"><i class="fas fa-money-bill"></i></div>
-        <div class="stat-info">
-          <h3 style="color:#ef4444">${formatSum(jamiQarz)}</h3>
-          <p>Jami qarz summa</p>
-        </div>
+        <div class="stat-info"><h3 style="color:#ef4444">${formatSum(jamiQarz)}</h3><p>Jami qarz</p></div>
       </div>`;
   } catch(e) {}
 }
 
+// Statistika kartasiga bosib filtr qo'llash
+function qarzKanbanFiltri(status) {
+  const f = _qarzKanbanData.filter(q => q.status === status);
+  if (_qarzKorinish === 'kanban') qarzKanbanKorsatish(f);
+  else qarzJadvalKorsatish(f);
+  const inp = document.getElementById('qarzQidiruv');
+  if (inp) inp.value = '';
+}
+
+// Eski funksiyalar — compatibility
 let _qarzlarData = [];
-
-async function qarzlarYukla() {
-  const holat = document.getElementById('qarzHolatFilter')?.value || 'ochiq';
-  const div = document.getElementById('qarzlarJadval');
-  if (!div) return;
-  div.innerHTML = '<div style="text-align:center;padding:20px"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
-
-  try {
-    const params = holat ? `holat=${holat}` : '';
-    _qarzlarData = await apiGet('/qarz_tarixi' + (params ? '?'+params : ''));
-    qarzJadvalKorsatish(_qarzlarData);
-  } catch(e) { toast(e.message,'error'); }
-}
-
-function qarzFilter() {
-  const q = document.getElementById('qarzQidiruv')?.value?.toLowerCase() || '';
-  const f = _qarzlarData.filter(x =>
-    (x.mijoz_ismi||'').toLowerCase().includes(q) ||
-    (x.mijoz_telefon||'').includes(q));
-  qarzJadvalKorsatish(f);
-}
+async function qarzlarYukla() { await qarzKanbanYukla(); }
+function qarzFilter() { qarzKanbanFilter(); }
 
 function qarzStatusBadge(q) {
   const map = {
