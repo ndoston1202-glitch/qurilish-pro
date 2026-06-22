@@ -42,8 +42,7 @@ async function integratsiyaYukla() {
         </div>
 
         <!-- SMS -->
-        <div onclick="intTabOch('sms')"
-          style="border:2px solid ${intTabJoriy==='sms'?'#10b981':'#e2e8f0'};
+        <div onclick="intTabOch('sms')"          style="border:2px solid ${intTabJoriy==='sms'?'#10b981':'#e2e8f0'};
           border-radius:12px;padding:16px;cursor:pointer;background:white;
           transition:all 0.2s"
           onmouseover="this.style.borderColor='#10b981';this.style.boxShadow='0 4px 12px rgba(16,185,129,0.15)'"
@@ -63,9 +62,29 @@ async function integratsiyaYukla() {
           </div>
         </div>
 
+        <!-- DB SYNC -->
+        <div onclick="intTabOch('db_sync')"
+          style="border:2px solid ${intTabJoriy==='db_sync'?'#2563eb':'#e2e8f0'};
+          border-radius:12px;padding:16px;cursor:pointer;background:white;transition:all 0.2s"
+          onmouseover="this.style.borderColor='#2563eb';this.style.boxShadow='0 4px 12px rgba(37,99,235,0.15)'"
+          onmouseout="this.style.borderColor='${intTabJoriy==='db_sync'?'#2563eb':'#e2e8f0'}';this.style.boxShadow=''">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div style="width:44px;height:44px;border-radius:10px;background:#2563eb;
+              display:flex;align-items:center;justify-content:center">
+              <i class="fas fa-cloud-upload-alt" style="color:white;font-size:20px"></i>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:15px">DB Cloud Sync</div>
+              <div style="font-size:11px;color:#64748b">GitHub orqali backup</div>
+            </div>
+          </div>
+          <div id="dbSyncKartaHolat" style="font-size:12px;color:#94a3b8">
+            <i class="fas fa-circle" style="font-size:8px"></i> Tekshirilmoqda...
+          </div>
+        </div>
+
         <!-- KELAJAKDA -->
-        <div style="border:2px dashed #e2e8f0;border-radius:12px;padding:16px;
-          background:#fafafa;display:flex;align-items:center;justify-content:center;
+        <div style="border:2px dashed #e2e8f0;border-radius:12px;padding:16px;          background:#fafafa;display:flex;align-items:center;justify-content:center;
           flex-direction:column;gap:8px;min-height:100px;opacity:0.6">
           <i class="fas fa-plus-circle" style="font-size:28px;color:#cbd5e1"></i>
           <div style="font-size:13px;color:#94a3b8;text-align:center">
@@ -83,6 +102,7 @@ async function integratsiyaYukla() {
   // Telegram holatini tekshirish
   intTelegramHolatYukla();
   intSmsHolatYukla();
+  intDbSyncHolatYukla();
 
   // Joriy tabni ochish
   intTabOch(intTabJoriy);
@@ -90,9 +110,9 @@ async function integratsiyaYukla() {
 
 function intTabOch(tab) {
   intTabJoriy = tab;
-  // Kartalarni qayta render qilmasdan faqat sozlamalar div ni yangilash
   if (tab === 'telegram') intTelegramSozKorsatish();
   else if (tab === 'sms') intSmsSozKorsatish();
+  else if (tab === 'db_sync') intDbSyncKorsatish();
 }
 
 // ===== TELEGRAM HOLAT TEKSHIRISH =====
@@ -123,7 +143,6 @@ async function intSmsHolatYukla() {
     }
   } catch {}
 }
-
 
 // ===== TELEGRAM SOZLAMALAR =====
 async function intTelegramSozKorsatish() {
@@ -485,4 +504,178 @@ async function smsTest() {
     }
     toast('❌ ' + e.message, 'error');
   }
+}
+
+
+// ===== DB SYNC TAB =====
+async function intDbSyncKorsatish() {
+  const div = document.getElementById('intSozDiv');
+  if (!div) return;
+  div.innerHTML = `<div style="text-align:center;padding:20px">
+    <i class="fas fa-spinner fa-spin fa-2x" style="color:#2563eb"></i></div>`;
+
+  try {
+    const holat = await apiGet('/db_sync/holat');
+    div.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:8px;background:#2563eb;
+              display:flex;align-items:center;justify-content:center">
+              <i class="fas fa-cloud-upload-alt" style="color:white;font-size:16px"></i>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:15px">Ma'lumotlar bazasi Cloud Sync</div>
+              <div style="font-size:12px;color:#64748b">GitHub orqali boshqa qurilmalarga sync</div>
+            </div>
+          </div>
+          <span style="font-size:12px;padding:4px 10px;border-radius:12px;font-weight:600;
+            background:${holat.token_bor&&holat.repo?'#dcfce7':'#fee2e2'};
+            color:${holat.token_bor&&holat.repo?'#166534':'#991b1b'}">
+            ${holat.token_bor&&holat.repo?'● Sozlangan':'● Sozlanmagan'}
+          </span>
+        </div>
+        <div class="card-body">
+
+          <!-- HOLAT -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+            <div style="text-align:center;padding:14px;background:#f8fafc;border-radius:10px;
+              border:1px solid #e2e8f0">
+              <div style="font-size:22px;margin-bottom:4px">${holat.internet?'🌐':'📵'}</div>
+              <div style="font-weight:700;font-size:13px">${holat.internet?'Ulangan':'Uzilgan'}</div>
+              <div style="font-size:11px;color:#94a3b8">Internet</div>
+            </div>
+            <div style="text-align:center;padding:14px;background:#f8fafc;border-radius:10px;
+              border:1px solid #e2e8f0">
+              <div style="font-size:22px;margin-bottom:4px">${holat.token_bor?'🔑':'🔒'}</div>
+              <div style="font-weight:700;font-size:13px">${holat.token_bor?'Mavjud':'Yo\'q'}</div>
+              <div style="font-size:11px;color:#94a3b8">GitHub Token</div>
+            </div>
+            <div style="text-align:center;padding:14px;background:#f8fafc;border-radius:10px;
+              border:1px solid #e2e8f0">
+              <div style="font-size:22px;margin-bottom:4px">${holat.oxirgi_sync?'✅':'⏳'}</div>
+              <div style="font-weight:700;font-size:13px;font-size:11px">
+                ${holat.oxirgi_sync||'Hali sync bo\'lmagan'}
+              </div>
+              <div style="font-size:11px;color:#94a3b8">Oxirgi sync</div>
+            </div>
+          </div>
+
+          <!-- .ENV SOZLASH -->
+          <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;
+            padding:14px;margin-bottom:16px">
+            <div style="font-weight:700;font-size:13px;color:#92400e;margin-bottom:10px">
+              <i class="fas fa-cog"></i> .env faylni sozlash
+            </div>
+            <p style="font-size:12px;color:#78350f;margin-bottom:10px">
+              Dastur papkasidagi <code>.env</code> faylga qo'shing:
+            </p>
+            <div style="background:#1e293b;color:#e2e8f0;border-radius:8px;padding:12px;
+              font-family:monospace;font-size:12px;line-height:1.8">
+              DB_SYNC_TOKEN=<span style="color:#86efac">ghp_sizning_github_tokeningiz</span><br>
+              DB_SYNC_REPO=<span style="color:#86efac">${holat.repo||'owner/repo_nomi'}</span><br>
+              DB_SYNC_BRANCH=<span style="color:#86efac">db-backup</span>
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:#92400e">
+              <b>GitHub Token olish:</b>
+              <a href="https://github.com/settings/tokens/new" target="_blank"
+                style="color:#2563eb">github.com/settings/tokens/new</a>
+              → Scope: <b>repo</b> ✓
+            </div>
+          </div>
+
+          <!-- HOZIRGI REPO -->
+          ${holat.repo ? `
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;
+            padding:12px;margin-bottom:16px;font-size:13px">
+            <i class="fas fa-code-branch" style="color:#2563eb"></i>
+            Repo: <b>${holat.repo}</b> |
+            Branch: <b>${holat.branch}</b>
+          </div>` : ''}
+
+          <!-- TUGMALAR -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="dbSyncSaqlash()"
+              style="flex:1;min-width:160px"
+              ${!holat.token_bor||!holat.internet?'disabled':''}>
+              <i class="fas fa-cloud-upload-alt"></i> Hozir saqlash
+            </button>
+            <button class="btn btn-warning" onclick="dbSyncYukla()"
+              ${!holat.token_bor||!holat.internet?'disabled':''}>
+              <i class="fas fa-cloud-download-alt"></i> GitHub dan yuklash
+            </button>
+            <button class="btn btn-secondary" onclick="intDbSyncKorsatish()">
+              <i class="fas fa-sync"></i> Yangilash
+            </button>
+          </div>
+
+          <div id="syncStatus" style="display:none;margin-top:12px;padding:10px 14px;
+            border-radius:8px;font-size:13px"></div>
+
+          <!-- QANDAY ISHLAYDI -->
+          <div style="margin-top:20px;background:#f0fdf4;border:1px solid #bbf7d0;
+            border-radius:10px;padding:14px">
+            <div style="font-weight:700;font-size:13px;color:#166534;margin-bottom:10px">
+              <i class="fas fa-info-circle"></i> Qanday ishlaydi?
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:#15803d">
+              <div>🔄 <b>Har 30 daqiqada</b> — DB avtomatik GitHub ga saqlanadi</div>
+              <div>🚀 <b>Dastur ishga tushganda</b> — Internet bo'lsa GitHub dan eng yangi DB yuklaydi</div>
+              <div>⏹️ <b>Dastur to'xtatilganda</b> — Oxirgi backup GitHub ga yuboriladi</div>
+              <div>💻 <b>Yangi qurilmada</b> — .env sozlab ishga tushiring, DB avtomatik yuklanadi</div>
+            </div>
+          </div>
+
+        </div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('intSozDiv').innerHTML =
+      `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>${e.message}</p></div>`;
+  }
+}
+
+async function dbSyncSaqlash() {
+  const s = document.getElementById('syncStatus');
+  if (s) { s.style.display='block'; s.style.background='#f8fafc'; s.style.color='#475569';
+    s.textContent = '⏳ GitHub ga saqlanmoqda...'; }
+  try {
+    const r = await apiPost('/db_sync/saqlash', {});
+    if (r.muvaffaqiyat) {
+      if (s) { s.style.background='#f0fdf4'; s.style.color='#166534';
+        s.textContent = '✅ DB GitHub ga saqlandi! (background da ishlaydi)'; }
+      toast('✅ DB saqlash boshlandi!', 'success');
+      setTimeout(intDbSyncKorsatish, 5000);
+    }
+  } catch(e) { if(s){s.style.background='#fff1f2';s.style.color='#991b1b';s.textContent='❌ '+e.message;} toast(e.message,'error'); }
+}
+
+async function dbSyncYukla() {
+  if (!confirm('⚠️ GitHub dan DB yuklansa lokal ma\'lumotlar o\'chiriladi!\nDavom etasizmi?')) return;
+  const s = document.getElementById('syncStatus');
+  if (s) { s.style.display='block'; s.style.background='#f8fafc'; s.style.color='#475569';
+    s.textContent = '⏳ GitHub dan yuklanmoqda...'; }
+  try {
+    const r = await apiPost('/db_sync/yukla', {});
+    if (r.muvaffaqiyat) {
+      if (s) { s.style.background='#f0fdf4'; s.style.color='#166534';
+        s.textContent = '✅ ' + r.xabar; }
+      toast('✅ DB yuklandi! Sahifani yangilang.', 'success');
+    }
+  } catch(e) { if(s){s.style.background='#fff1f2';s.style.color='#991b1b';s.textContent='❌ '+e.message;} toast(e.message,'error'); }
+}
+
+
+async function intDbSyncHolatYukla() {
+  try {
+    const data = await apiGet('/db_sync/holat');
+    const el = document.getElementById('dbSyncKartaHolat');
+    if (!el) return;
+    if (data.token_bor && data.repo) {
+      el.innerHTML = `<i class="fas fa-circle" style="font-size:8px;color:#10b981"></i>
+        <span style="color:#10b981;font-weight:600">Sozlangan</span>
+        ${data.oxirgi_sync ? '<br><span style="color:#94a3b8;font-size:10px">'+data.oxirgi_sync+'</span>' : ''}`;
+    } else {
+      el.innerHTML = '<i class="fas fa-circle" style="font-size:8px;color:#94a3b8"></i> <span style="color:#94a3b8">Sozlanmagan</span>';
+    }
+  } catch {}
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, sqlite3, os, re, csv, io, threading, time
+import json, sqlite3, os, re, csv, io, threading, time, base64, shutil, signal, sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
@@ -15,6 +15,166 @@ def load_env():
                     key, val = line.split('=', 1)
                     os.environ.setdefault(key.strip(), val.strip())
 load_env()
+
+# ===== DB CLOUD SYNC (GitHub orqali) =====
+DB_SYNC_TOKEN  = os.environ.get('DB_SYNC_TOKEN', '')
+DB_SYNC_REPO   = os.environ.get('DB_SYNC_REPO', '')
+DB_SYNC_BRANCH = os.environ.get('DB_SYNC_BRANCH', 'db-backup')
+DB_SYNC_FILE   = 'dokoni.db'
+_OXIRGI_SYNC   = [None]
+_SYNC_ISHLAYDI = [False]
+
+
+def internet_bor():
+    import urllib.request
+    try:
+        urllib.request.urlopen('https://api.github.com', timeout=5)
+        return True
+    except:
+        return False
+
+
+def github_db_yukla():
+    """GitHub db-backup branchdan DB ni yuklab olish"""
+    import urllib.request
+    if not DB_SYNC_TOKEN or not DB_SYNC_REPO:
+        return False
+    try:
+        url = f"https://api.github.com/repos/{DB_SYNC_REPO}/contents/{DB_SYNC_FILE}?ref={DB_SYNC_BRANCH}"
+        req = urllib.request.Request(url, headers={
+            'Authorization': f'token {DB_SYNC_TOKEN}',
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'QurilishDokon/1.0'
+        })
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.loads(r.read().decode('utf-8'))
+        if 'content' not in data:
+            return False
+        db_content = base64.b64decode(data['content'])
+        if os.path.exists(DB_PATH):
+            shutil.copy2(DB_PATH, DB_PATH + '.backup')
+        with open(DB_PATH, 'wb') as f:
+            f.write(db_content)
+        print(f"✅ DB GitHub dan yuklandi ({len(db_content)//1024} KB)")
+        _OXIRGI_SYNC[0] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        return True
+    except Exception as e:
+        print(f"DB yuklab olishda xato: {e}")
+        return False
+
+
+def github_db_saqlash():
+    """DB ni GitHub db-backup branch ga yuklash"""
+    import urllib.request
+    if not DB_SYNC_TOKEN or not DB_SYNC_REPO:
+        return False
+    if _SYNC_ISHLAYDI[0] or not os.path.exists(DB_PATH):
+        return False
+    _SYNC_ISHLAYDI[0] = True
+    try:
+        with open(DB_PATH, 'rb') as f:
+            db_bytes = f.read()
+        db_b64 = base64.b64encode(db_bytes).decode('utf-8')
+        sha = None
+        try:
+            url = f"https://api.github.com/repos/{DB_SYNC_REPO}/contents/{DB_SYNC_FILE}?ref={DB_SYNC_BRANCH}"
+            req = urllib.request.Request(url, headers={
+                'Authorization': f'token {DB_SYNC_TOKEN}',
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'QurilishDokon/1.0'
+            })
+            with urllib.request.urlopen(req, timeout=15) as r:
+                sha = json.loads(r.read().decode('utf-8')).get('sha')
+        except:
+            pass
+        now = datetime.now().strftime('%Y-%m-%d %H:%M')
+        payload = {'message': f'DB backup — {now}', 'content': db_b64, 'branch': DB_SYNC_BRANCH}
+        if sha:
+            payload['sha'] = sha
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(
+            f"https://api.github.com/repos/{DB_SYNC_REPO}/contents/{DB_SYNC_FILE}",
+            data=data, method='PUT',
+            headers={
+                'Authorization': f'token {DB_SYNC_TOKEN}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'QurilishDokon/1.0'
+            }
+        )
+        urllib.request.urlopen(req, timeout=60)
+        print(f"✅ DB GitHub ga saqlandi ({len(db_bytes)//1024} KB) — {now}")
+        _OXIRGI_SYNC[0] = now
+        return True
+    except Exception as e:
+        print(f"DB saqlashda xato: {e}")
+        return False
+    finally:
+        _SYNC_ISHLAYDI[0] = False
+
+
+def db_branch_yaratish():
+    """db-backup branch mavjud bo'lmasa yaratish"""
+    import urllib.request
+    if not DB_SYNC_TOKEN or not DB_SYNC_REPO:
+        return
+    try:
+        req = urllib.request.Request(
+            f"https://api.github.com/repos/{DB_SYNC_REPO}/git/refs/heads/main",
+            headers={'Authorization': f'token {DB_SYNC_TOKEN}', 'User-Agent': 'QurilishDokon/1.0'}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            main_sha = json.loads(r.read().decode('utf-8'))['object']['sha']
+        payload = json.dumps({'ref': f'refs/heads/{DB_SYNC_BRANCH}', 'sha': main_sha}).encode('utf-8')
+        req2 = urllib.request.Request(
+            f"https://api.github.com/repos/{DB_SYNC_REPO}/git/refs",
+            data=payload, method='POST',
+            headers={
+                'Authorization': f'token {DB_SYNC_TOKEN}',
+                'Content-Type': 'application/json',
+                'User-Agent': 'QurilishDokon/1.0'
+            }
+        )
+        urllib.request.urlopen(req2, timeout=10)
+        print(f"✅ {DB_SYNC_BRANCH} branch yaratildi")
+    except:
+        pass
+
+
+def db_sync_scheduler():
+    """Har 30 daqiqada DB ni GitHub ga saqlash"""
+    if not DB_SYNC_TOKEN or not DB_SYNC_REPO:
+        print("⚠️  DB sync sozlanmagan (.env ga DB_SYNC_TOKEN va DB_SYNC_REPO kiriting)")
+        return
+    print(f"🔄 DB sync scheduler ishga tushdi → {DB_SYNC_REPO}:{DB_SYNC_BRANCH}")
+    time.sleep(5)
+    if internet_bor():
+        db_branch_yaratish()
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            count = conn.execute("SELECT COUNT(*) FROM sotuvlar").fetchone()[0]
+            conn.close()
+            if count == 0:
+                print("📥 DB bo'sh — GitHub dan yuklanmoqda...")
+                github_db_yukla()
+                init_db()  # Jadvallarni qayta tekshirish
+            else:
+                print(f"📊 Lokal DB ({count} sotuv) — GitHub ga backup...")
+                threading.Thread(target=github_db_saqlash, daemon=True).start()
+        except:
+            print("📥 DB yangi — GitHub dan yuklanmoqda...")
+            if github_db_yukla():
+                init_db()
+    else:
+        print("⚠️  Internet yo'q — lokal DB bilan davom etiladi")
+
+    while True:
+        time.sleep(30 * 60)
+        if internet_bor():
+            threading.Thread(target=github_db_saqlash, daemon=True).start()
+        else:
+            print("⚠️  Internet yo'q — DB sync o'tkazib yuborildi")
+
 
 # API KEY
 if not os.environ.get('GROQ_API_KEY'):
@@ -319,6 +479,13 @@ def init_db():
     # v10: foydalanuvchilar ruxsatlar ustuni
     try:
         conn.execute("ALTER TABLE foydalanuvchilar ADD COLUMN ruxsatlar TEXT DEFAULT NULL")
+        conn.commit()
+    except: pass
+
+    # v11: integratsiya_sozlamalar login ustuni (SMS uchun)
+    try:
+        conn.execute("ALTER TABLE integratsiya_sozlamalar ADD COLUMN login TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE integratsiya_sozlamalar ADD COLUMN sender TEXT DEFAULT ''")
         conn.commit()
     except: pass
 
@@ -1533,7 +1700,18 @@ O'zbek tilida batafsil javob ber."""
                     'jami_xarajat': sum(x['summa'] for x in xarajatlar),
                 })
 
-            # KASSA HARAKATLARI ro'yxati — GET
+            # DB SYNC HOLATI VA QO'LDA SYNC
+            if path == '/api/db_sync/holat':
+                return self.send_json({
+                    'token_bor': bool(DB_SYNC_TOKEN),
+                    'repo': DB_SYNC_REPO,
+                    'branch': DB_SYNC_BRANCH,
+                    'oxirgi_sync': _OXIRGI_SYNC[0],
+                    'internet': internet_bor(),
+                    'ishlaydi': _SYNC_ISHLAYDI[0],
+                })
+
+            # KASSA HARAKATLARI ro\'yxati — GET
             if path == '/api/kassa_harakatlari':
                 params = []
                 sql = "SELECT * FROM kassa_harakatlari WHERE 1=1"
@@ -2019,7 +2197,34 @@ O'zbek tilida batafsil javob ber."""
                         (tur, body.get('token',''), body.get('chat_id',''), body.get('faol',0),
                          json.dumps(body.get('sozlamalar',{}), ensure_ascii=False)))
                 conn.commit()
+                # SMS uchun login ni ham saqlash
+                if body.get('tur') == 'sms' and body.get('login'):
+                    mavjud2 = conn.execute("SELECT id FROM integratsiya_sozlamalar WHERE tur='sms'").fetchone()
+                    if mavjud2:
+                        conn.execute("UPDATE integratsiya_sozlamalar SET login=? WHERE tur='sms'",
+                            (body.get('login',''),))
+                    conn.commit()
                 return self.send_json({'muvaffaqiyat': True})
+
+            # DB SYNC — qo'lda yuborish
+            if path == '/api/db_sync/saqlash':
+                if not DB_SYNC_TOKEN or not DB_SYNC_REPO:
+                    return self.send_error_json('.env da DB_SYNC_TOKEN va DB_SYNC_REPO kerak!')
+                if not internet_bor():
+                    return self.send_error_json('Internet aloqasi yo\'q!')
+                threading.Thread(target=github_db_saqlash, daemon=True).start()
+                return self.send_json({'muvaffaqiyat': True, 'xabar': 'Saqlash boshlandi...'})
+
+            if path == '/api/db_sync/yukla':
+                if not DB_SYNC_TOKEN or not DB_SYNC_REPO:
+                    return self.send_error_json('.env da DB_SYNC_TOKEN va DB_SYNC_REPO kerak!')
+                if not internet_bor():
+                    return self.send_error_json('Internet aloqasi yo\'q!')
+                ok = github_db_yukla()
+                if ok:
+                    init_db()
+                    return self.send_json({'muvaffaqiyat': True, 'xabar': 'DB GitHub dan yuklandi!'})
+                return self.send_error_json('DB yuklab olishda xato!')
 
             # SMS TEST
             if path == '/api/sms/test':
@@ -2371,6 +2576,21 @@ if __name__ == '__main__':
     print(f"✅ Server ishga tushdi: http://0.0.0.0:{PORT}")
     print(f"👤 Admin: username=admin, parol=admin123")
     print(f"📦 DB: {DB_PATH}")
+
+    # Chiqishda DB ni saqlash (Ctrl+C)
+    def chiqishda_saqlash(sig, frame):
+        print("\n⏹️  Server to'xtatilmoqda...")
+        if DB_SYNC_TOKEN and DB_SYNC_REPO and internet_bor():
+            print("💾 DB GitHub ga saqlanmoqda...")
+            github_db_saqlash()
+        print("👋 Xayr!")
+        sys.exit(0)
+    signal.signal(signal.SIGINT, chiqishda_saqlash)
+    signal.signal(signal.SIGTERM, chiqishda_saqlash)
+
+    # DB sync scheduler — background thread
+    sync_thread = threading.Thread(target=db_sync_scheduler, daemon=True)
+    sync_thread.start()
 
     # Kunlik hisobot scheduler — background thread
     scheduler_thread = threading.Thread(target=kunlik_hisobot_scheduler, daemon=True)
