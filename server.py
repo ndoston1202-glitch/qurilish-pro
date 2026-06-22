@@ -671,8 +671,85 @@ def telegram_sozlamalarni_ol():
     except: return None
 
 
-def tg_yuborish_bg(matn):
-    """Telegram ga background thread orqali xabar yuborish"""
+def sms_yuborish(provayder, login, token, sender, telefon, matn):
+    """SMS yuborish — Eskiz, PlayMobile, Infobip"""
+    import urllib.request, urllib.parse
+    try:
+        tel = telefon.replace('+','').replace(' ','').replace('-','')
+        if provayder == 'eskiz':
+            # Eskiz.uz API
+            auth = f"{login}:{token}"
+            import base64
+            b64 = base64.b64encode(auth.encode()).decode()
+            payload = json.dumps({
+                'mobile_phone': tel,
+                'message': matn,
+                'from': sender or 'DOKON',
+                'callback_url': ''
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                'https://notify.eskiz.uz/api/message/sms/send',
+                data=payload,
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {token}'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                result = json.loads(r.read().decode('utf-8'))
+                if result.get('status') == 'waiting' or result.get('id'):
+                    return {'muvaffaqiyat': True}
+                return {'xato': result.get('message', 'Xato')}
+
+        elif provayder == 'playmobile':
+            # PlayMobile API
+            payload = json.dumps({
+                'messages': [{
+                    'recipient': tel,
+                    'message-id': f'msg_{int(datetime.now().timestamp())}',
+                    'sms': {'originator': sender or 'DOKON', 'content': {'text': matn}}
+                }]
+            }).encode('utf-8')
+            import base64
+            b64 = base64.b64encode(f"{login}:{token}".encode()).decode()
+            req = urllib.request.Request(
+                'https://send.smsgateway.kz/sms/json',
+                data=payload,
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Basic {b64}'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                result = json.loads(r.read().decode('utf-8'))
+                return {'muvaffaqiyat': True}
+
+        elif provayder == 'infobip':
+            payload = json.dumps({
+                'messages': [{
+                    'destinations': [{'to': tel}],
+                    'from': sender or 'InfoSMS',
+                    'text': matn
+                }]
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                f'https://api.infobip.com/sms/2/text/advanced',
+                data=payload,
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f'App {token}'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                result = json.loads(r.read().decode('utf-8'))
+                return {'muvaffaqiyat': True}
+
+        return {'xato': 'Noto\'g\'ri provayder'}
+    except Exception as e:
+        return {'xato': str(e)}
+
+
+def tg_yuborish_bg(matn):    """Telegram ga background thread orqali xabar yuborish"""
     def _():
         try:
             tg = telegram_sozlamalarni_ol()
@@ -1943,8 +2020,19 @@ O'zbek tilida batafsil javob ber."""
                 conn.commit()
                 return self.send_json({'muvaffaqiyat': True})
 
-            # TELEGRAM TEST
-            if path == '/api/telegram/test':
+            # SMS TEST
+            if path == '/api/sms/test':
+                provayder = body.get('provayder', 'eskiz')
+                login  = body.get('login', '')
+                token  = body.get('token', '')
+                sender = body.get('sender', 'DOKON')
+                tel    = body.get('telefon', '')
+                matn   = "Test SMS - Qurilish Do'koni tizimidan"
+                if not tel: return self.send_error_json('Telefon raqam kiritilmagan!')
+                result = sms_yuborish(provayder, login, token, sender, tel, matn)
+                return self.send_json(result)
+
+
                 result = telegram_yuborish(body.get('token',''), body.get('chat_id',''),
                     "🏗️ Qurilish Do'koni — Test xabari!\n\nBot muvaffaqiyatli ulandi ✅")
                 return self.send_json(result)

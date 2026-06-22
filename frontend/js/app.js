@@ -65,7 +65,7 @@ function sidebarMenuYanila() {
   } else if (joriyFoydalanuvchi.rol === 'admin') {
     // Admin — hamma menyu ko'rinsin
     ['dashboard','hisobot','kassa','kassa_hisobi','qarzlar','mahsulotlar','etiketka',
-     'brendlar','mijozlar','jurnal','ai','xodimlar','sozlamalar'].forEach(kalit => {
+     'brendlar','mijozlar','jurnal','ai','xodimlar','integratsiya','sozlamalar'].forEach(kalit => {
       const el = document.getElementById('menu-' + kalit);
       if (el) el.style.display = '';
     });
@@ -139,6 +139,7 @@ function sahifaOch(nomi) {
     jurnal:       'Jurnal',
     ai:           '🤖 AI Yordamchi',
     mijozlar:     'Mijozlar',
+    integratsiya:  'Integratsiya',
     xodimlar:     'Xodimlar',
     sozlamalar:   'Sozlamalar'
   };
@@ -163,6 +164,7 @@ function sahifaOch(nomi) {
     case 'jurnal': jurnalYukla(); break;
     case 'ai': aiYukla(); break;
     case 'xodimlar': xodimlarYukla(); break;
+    case 'integratsiya': integratsiyaYukla(); break;
     case 'mijozlar': mijozlarYukla(); break;
     case 'brendlar': brendlarYukla(); break;
     case 'sozlamalar': sozlamalarYukla(); break;
