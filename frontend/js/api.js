@@ -1,6 +1,33 @@
 const API = 'http://localhost:3000/api';
 let joriyFoydalanuvchi = null;
 
+// ===== SOZLAMALAR FALLBACK =====
+// Agar sozlamalar.js yuklanmasa yoki xato bo'lsa — bu fallback ishlaydi
+// sozlamalar.js yuklanganida sozlamalarniOl qayta aniqlanadi va shu ishlatiladi
+if (typeof window.sozlamalarniOl === 'undefined') {
+  window.sozlamalarniOl = function() {
+    try {
+      const s = JSON.parse(localStorage.getItem('dokoni_sozlamalar') || '{}');
+      return Object.assign({
+        chek_dokoni_nomi:"Qurilish Do'koni", chek_manzil:'', chek_telefon:'',
+        chek_xabar:"Rahmat! Yana keling! 🙏", rangTema:'moviy',
+        savdoKorinish:'karta', savdoTolovDefault:'naqd', chegirmaMax:100,
+        avtomatChek:true, tolovNaqd:true, tolovKarta:true, tolovQarz:true,
+        tolovBankTransfer:false,
+      }, s);
+    } catch { return {}; }
+  };
+}
+if (typeof window.sozlamalarniQolla === 'undefined') {
+  window.sozlamalarniQolla = function() {
+    try {
+      const s = window.sozlamalarniOl();
+      const r = {moviy:'#2563eb',yashil:'#10b981',toq:'#7c3aed',qizil:'#ef4444',toshrang:'#475569'};
+      if (r[s.rangTema]) document.documentElement.style.setProperty('--primary', r[s.rangTema]);
+    } catch {}
+  };
+}
+
 // ===== TOAST =====
 function toast(xabar, tur = 'success') {
   const t = document.getElementById('toast');

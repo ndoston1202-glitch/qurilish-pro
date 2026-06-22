@@ -553,7 +553,7 @@ async function eShablonlarRoyxatYanila() {
 
 // ===== CHIQARISH (PRINT) =====
 function eChiqarish() {
-  const soz = sozlamalarniOl();
+  const soz = (typeof sozlamalarniOl === 'function') ? sozlamalarniOl() : (JSON.parse(localStorage.getItem('dokoni_sozlamalar')||'{}'));
   const w = Math.round(eUzunlik * eMiqyos);
   const h = Math.round(eBalandlik * eMiqyos);
 
