@@ -1030,6 +1030,7 @@ async function telegramKunlikYuborish() {
     const holat = document.getElementById('telegramHolat');
     if (holat) holat.innerHTML = '<span style="color:#94a3b8">● Sozlanmagan</span>';
   }
+}
 
 function sozlamalarniQolla() {
   const s = sozlamalarniOl();

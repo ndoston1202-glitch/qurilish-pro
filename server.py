@@ -935,6 +935,9 @@ O'zbek tilida batafsil javob ber."""
                     'jami_qaytarish': sum(q['jami_summa'] for q in qaytarishlar),
                     'jami_xarajat': sum(x['summa'] for x in xarajatlar),
                 })
+
+            # KASSA HARAKATLARI ro'yxati — GET
+            if path == '/api/kassa_harakatlari':
                 params = []
                 sql = "SELECT * FROM kassa_harakatlari WHERE 1=1"
                 if qp('boshlanish'): sql += " AND date(sana)>=?"; params.append(qp('boshlanish'))
@@ -943,7 +946,6 @@ O'zbek tilida batafsil javob ber."""
                 sql += " ORDER BY sana DESC"
                 return self.send_json(rows_to_list(conn.execute(sql, params).fetchall()))
 
-            # JURNAL — barcha operatsiyalar
             if path == '/api/jurnal':
                 bosh = qp('boshlanish') or datetime.now().strftime('%Y-%m-%d')
                 tug  = qp('tugash')    or datetime.now().strftime('%Y-%m-%d')
