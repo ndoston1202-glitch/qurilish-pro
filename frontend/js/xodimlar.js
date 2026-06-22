@@ -352,7 +352,6 @@ function ruxsatlarFormOl() {
   });
   return obj;
 }
-}
 
 function xodimQosh() {
   modalOch('Yangi xodim qo\'shish', xodimFormKontent());
