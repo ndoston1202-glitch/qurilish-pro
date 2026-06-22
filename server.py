@@ -338,17 +338,18 @@ def telegram_yuborish(token, chat_id, matn):
     if not token or not chat_id:
         return {'xato': 'Token yoki Chat ID kiritilmagan!'}
     try:
+        # Markdown belgilarini escape qilamiz
+        matn_clean = matn.replace('*','').replace('_','').replace('`','').replace('[','').replace(']','')
         data = json.dumps({
-            'chat_id': chat_id,
-            'text': matn,
-            'parse_mode': 'Markdown'
+            'chat_id': str(chat_id).strip(),
+            'text': matn_clean,
         }).encode('utf-8')
         req = urllib.request.Request(
-            f'https://api.telegram.org/bot{token}/sendMessage',
+            f'https://api.telegram.org/bot{token.strip()}/sendMessage',
             data=data,
             headers={'Content-Type': 'application/json'}
         )
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             result = json.loads(r.read().decode('utf-8'))
             if result.get('ok'):
                 return {'muvaffaqiyat': True, 'xabar_id': result['result']['message_id']}
