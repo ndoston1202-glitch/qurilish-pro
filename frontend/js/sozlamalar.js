@@ -699,6 +699,16 @@ async function sozIntegratsiyaKorsatish() {
                   <input type="checkbox" id="tg_${b.id}" style="width:16px;height:16px;cursor:pointer">
                   <span style="font-size:13px">${b.e} ${b.n}</span>
                 </label>`).join('')}
+              <!-- Kunlik hisobot vaqti -->
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;
+                border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;margin-top:4px">
+                <span style="font-size:13px;color:#64748b">🕙 Kunlik hisobot yuborish vaqti:</span>
+                <select id="tg_hisobot_soat" style="border:1px solid #e2e8f0;border-radius:6px;
+                  padding:4px 8px;font-size:13px;background:white">
+                  ${Array.from({length:24},(_,i)=>`<option value="${i}" ${i===22?'selected':''}>${String(i).padStart(2,'0')}:00</option>`).join('')}
+                </select>
+                <span style="font-size:11px;color:#94a3b8">Har kuni avtomatik</span>
+              </div>
             </div>
           </div>
 
@@ -731,6 +741,8 @@ async function sozIntegratsiyaKorsatish() {
         const el = document.getElementById('tg_' + k);
         if (el) el.checked = soz[k] || false;
       });
+      const soatEl = document.getElementById('tg_hisobot_soat');
+      if (soatEl) soatEl.value = soz.hisobot_soat || 22;
       const h = document.getElementById('telegramHolat');
       if (h) h.innerHTML = data.faol
         ? '<span style="color:#10b981;font-weight:600">● Ulangan</span>'
@@ -830,6 +842,7 @@ async function telegramUlash() {
   ['har_sotuv','kunlik_avtom','kam_mahsulot','kechikkan_qarz'].forEach(k => {
     sozlamalar[k] = document.getElementById('tg_' + k)?.checked || false;
   });
+  sozlamalar.hisobot_soat = parseInt(document.getElementById('tg_hisobot_soat')?.value || '22');
 
   try {
     await apiPost('/integratsiya', { tur:'telegram', token, chat_id: finalChatId, faol: 1, sozlamalar });

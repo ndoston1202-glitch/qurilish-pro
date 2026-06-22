@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, sqlite3, os, re, csv, io
+import json, sqlite3, os, re, csv, io, threading, time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime
@@ -355,6 +355,142 @@ def telegram_yuborish(token, chat_id, matn):
             return {'xato': result.get('description', 'Noma\'lum xato')}
     except Exception as e:
         return {'xato': str(e)}
+
+
+def telegram_sozlamalarni_ol():
+    """Telegram sozlamalarini DB dan olish"""
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT * FROM integratsiya_sozlamalar WHERE tur='telegram' AND faol=1").fetchone()
+        conn.close()
+        if not row: return None
+        soz = json.loads(row['sozlamalar'] or '{}')
+        return {'token': row['token'], 'chat_id': row['chat_id'], 'sozlamalar': soz}
+    except: return None
+
+
+def telegram_sotuv_bildirishnoma(sotuv_id, chek_raqam, kassir_ismi, jami_summa, tolov_turi, mijoz_ismi=''):
+    """Har sotuv bo'lganda Telegram ga yuborish (background thread)"""
+    def _yuborish():
+        try:
+            tg = telegram_sozlamalarni_ol()
+            if not tg: return
+            if not tg['sozlamalar'].get('har_sotuv'): return
+            tolov_icon = '💵' if tolov_turi == 'naqd' else '💳' if tolov_turi == 'karta' else '📋'
+            matn = (
+                f"🛒 *Yangi sotuv!*\n"
+                f"────────────────\n"
+                f"🧾 Chek: `{chek_raqam}`\n"
+                f"💰 Summa: *{'{:,.0f}'.format(jami_summa)} so'm*\n"
+                f"{tolov_icon} To'lov: {tolov_turi.capitalize()}\n"
+                f"👤 Kassir: {kassir_ismi}\n"
+                + (f"👥 Mijoz: {mijoz_ismi}\n" if mijoz_ismi else "")
+                + f"🕐 Vaqt: {datetime.now().strftime('%H:%M:%S')}"
+            )
+            telegram_yuborish(tg['token'], tg['chat_id'], matn)
+        except: pass
+    threading.Thread(target=_yuborish, daemon=True).start()
+
+
+def telegram_kunlik_hisobot_yuborish(kun=None):
+    """Kunlik hisobot Telegram ga yuborish"""
+    try:
+        tg = telegram_sozlamalarni_ol()
+        if not tg: return
+        if not tg['sozlamalar'].get('kunlik_avtom'): return
+        if not kun:
+            kun = datetime.now().strftime('%Y-%m-%d')
+        conn = get_db()
+        js = conn.execute("SELECT COUNT(*) as son, COALESCE(SUM(jami_summa),0) as jami FROM sotuvlar WHERE date(sana)=?", (kun,)).fetchone()
+        jx = conn.execute("SELECT COALESCE(SUM(summa),0) as jami FROM xarajatlar WHERE date(sana)=?", (kun,)).fetchone()
+        jq = conn.execute("SELECT COUNT(*) as son, COALESCE(SUM(jami_summa),0) as jami FROM qaytarishlar WHERE date(sana)=?", (kun,)).fetchone()
+        # Foyda
+        foyda_row = conn.execute("""
+            SELECT COALESCE(SUM(st.jami) - SUM(st.miqdor * m.kelish_narxi), 0) as foyda
+            FROM sotuv_tafsilotlari st
+            JOIN mahsulotlar m ON st.mahsulot_id = m.id
+            JOIN sotuvlar s ON st.sotuv_id = s.id
+            WHERE date(s.sana) = ?
+        """, (kun,)).fetchone()
+        # Top 3 mahsulot
+        top = conn.execute("""
+            SELECT m.nomi, SUM(st.miqdor) as miqdor, SUM(st.jami) as jami
+            FROM sotuv_tafsilotlari st
+            JOIN mahsulotlar m ON st.mahsulot_id = m.id
+            JOIN sotuvlar s ON st.sotuv_id = s.id
+            WHERE date(s.sana) = ?
+            GROUP BY m.id ORDER BY jami DESC LIMIT 3
+        """, (kun,)).fetchall()
+        # Kechikkan qarzlar
+        bugun = datetime.now().strftime('%Y-%m-%d')
+        kechikkan = conn.execute("""
+            SELECT COUNT(*) as son, COALESCE(SUM(qoldi),0) as jami
+            FROM qarz_tarixi WHERE holat='ochiq' AND muddat IS NOT NULL AND muddat < ?
+        """, (bugun,)).fetchone()
+        conn.close()
+
+        foyda = foyda_row['foyda'] if foyda_row else 0
+        sof_foyda = foyda - (jx['jami'] if jx else 0)
+        kun_uz = datetime.strptime(kun, '%Y-%m-%d').strftime('%d.%m.%Y')
+
+        top_matn = ''
+        if top:
+            top_matn = '\n📦 *Top mahsulotlar:*\n'
+            for i, t in enumerate(top, 1):
+                top_matn += f"  {i}. {t['nomi']} — {'{:,.0f}'.format(t['jami'])} so'm\n"
+
+        kechikkan_matn = ''
+        if kechikkan and kechikkan['son'] > 0:
+            kechikkan_matn = f"\n⚠️ *Kechikkan qarzlar:* {kechikkan['son']} ta ({'{:,.0f}'.format(kechikkan['jami'])} so'm)\n"
+
+        matn = (
+            f"📊 *Kunlik hisobot — {kun_uz}*\n"
+            f"════════════════\n"
+            f"🛒 Sotuvlar: *{js['son']} ta*\n"
+            f"💰 Daromad: *{'{:,.0f}'.format(js['jami'])} so'm*\n"
+            f"↩️ Qaytarish: {jq['son']} ta ({'{:,.0f}'.format(jq['jami'])} so'm)\n"
+            f"💸 Xarajat: {'{:,.0f}'.format(jx['jami'])} so'm\n"
+            f"────────────────\n"
+            f"📈 Sof foyda: *{'{:,.0f}'.format(sof_foyda)} so'm*\n"
+            + top_matn
+            + kechikkan_matn
+            + f"════════════════\n"
+            f"🏗️ Qurilish Do'koni"
+        )
+        telegram_yuborish(tg['token'], tg['chat_id'], matn)
+    except Exception as e:
+        print(f"Kunlik hisobot xato: {e}")
+
+
+def kunlik_hisobot_scheduler():
+    """Har kuni sozlamadagi vaqtda kunlik hisobot yuborish"""
+    print("⏰ Kunlik hisobot scheduler ishga tushdi")
+    _oxirgi_yuborilgan = [None]
+
+    while True:
+        try:
+            hozir = datetime.now()
+            kun = hozir.strftime('%Y-%m-%d')
+            soat = hozir.hour
+            minut = hozir.minute
+
+            # Sozlamalardan hisobot vaqtini olish
+            tg = telegram_sozlamalarni_ol()
+            hisobot_soat = 22  # default
+            if tg and tg['sozlamalar'].get('hisobot_soat') is not None:
+                try: hisobot_soat = int(tg['sozlamalar']['hisobot_soat'])
+                except: pass
+
+            # Belgilangan vaqtda yuborish
+            if soat == hisobot_soat and minut == 0 and _oxirgi_yuborilgan[0] != kun:
+                _oxirgi_yuborilgan[0] = kun
+                telegram_kunlik_hisobot_yuborish(kun)
+                print(f"📊 Kunlik hisobot yuborildi: {kun} soat {hisobot_soat}:00")
+
+            time.sleep(60)
+        except Exception as e:
+            print(f"Scheduler xato: {e}")
+            time.sleep(60)
 
 MIME = {
     '.html':'text/html','.css':'text/css','.js':'application/javascript',
@@ -1300,6 +1436,12 @@ O'zbek tilida batafsil javob ber."""
                             (mijoz_id, r, qarz_summasi, qarz_summasi, muddat, 'ochiq',
                              f"Sotuv #{chek} — qarzga"))
                 conn.commit()
+                # Telegram bildirishnoma — har sotuv
+                try:
+                    kassir_row = conn.execute("SELECT ism,familiya FROM foydalanuvchilar WHERE id=?", (body['kassir_id'],)).fetchone()
+                    kassir_ismi = (kassir_row['ism'] + ' ' + kassir_row['familiya']) if kassir_row else 'Kassir'
+                    telegram_sotuv_bildirishnoma(r, chek, kassir_ismi, yakuniy, body.get('tolov_turi','naqd'), mijoz_ismi)
+                except: pass
                 return self.send_json({'muvaffaqiyat':True,'sotuv_id':r,'chek_raqam':chek,'jami_summa':yakuniy})
 
             if path == '/api/ombor':
@@ -1640,5 +1782,10 @@ if __name__ == '__main__':
     print(f"✅ Server ishga tushdi: http://0.0.0.0:{PORT}")
     print(f"👤 Admin: username=admin, parol=admin123")
     print(f"📦 DB: {DB_PATH}")
+
+    # Kunlik hisobot scheduler — background thread
+    scheduler_thread = threading.Thread(target=kunlik_hisobot_scheduler, daemon=True)
+    scheduler_thread.start()
+
     server = HTTPServer(('0.0.0.0', PORT), Handler)
     server.serve_forever()
