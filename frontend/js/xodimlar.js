@@ -31,7 +31,7 @@ async function xodimlarRoyxatYukla() {
           <thead>
             <tr>
               <th>#</th><th>Ismi</th><th>Username</th>
-              <th>Rol</th><th>Telefon</th><th>Holat</th>
+              <th>Rol</th><th>Ruxsatlar</th><th>Holat</th>
               <th>Yaratilgan</th><th>Amallar</th>
             </tr>
           </thead>
@@ -70,7 +70,22 @@ async function xodimlarRoyxatYukla() {
                       </button>` : ''}
                   </div>
                 </td>
-                <td>${x.telefon || '-'}</td>
+                <td>
+                  ${(() => {
+                    if (x.rol === 'admin') return '<span style="font-size:12px;color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:10px">👑 Barcha bo\'limlar</span>';
+                    const rx = ruxsatlarniOl(x);
+                    if (!rx) return '<span style="font-size:12px;color:#065f46;background:#d1fae5;padding:2px 8px;border-radius:10px">✅ Barcha bo\'limlar</span>';
+                    const ochiqlar = BOLIMLAR.filter(b => rx[b.kalit] !== false);
+                    const yopiqlar = BOLIMLAR.filter(b => rx[b.kalit] === false);
+                    if (yopiqlar.length === 0) return '<span style="font-size:12px;color:#065f46;background:#d1fae5;padding:2px 8px;border-radius:10px">✅ Barcha bo\'limlar</span>';
+                    return `<span style="font-size:12px;color:#1d4ed8;cursor:pointer" 
+                      onclick="xodimRuxsatlarKorsatish(${x.id},'${x.ism} ${x.familiya}')"
+                      title="${ochiqlar.map(b=>b.nomi).join(', ')}">
+                      <b>${ochiqlar.length}</b>/${BOLIMLAR.length} ta bo'lim
+                      <i class="fas fa-info-circle" style="color:#94a3b8"></i>
+                    </span>`;
+                  })()}
+                </td>
                 <td>
                   <span class="badge ${x.faol?'badge-success':'badge-danger'}" style="cursor:pointer"
                     onclick="${x.username!=='admin'?`holatTezOzgartir(${x.id},${x.faol},'${x.ism}')`:''}">
@@ -154,7 +169,73 @@ async function holatTezOzgartir(id, joriyHolat, ism) {
 }
 
 // ===== QO'SHISH / TAHRIRLASH =====
+// Barcha bo'limlar ro'yxati va ikonlari
+const BOLIMLAR = [
+  { kalit: 'dashboard',    nomi: 'Dashboard',      icon: 'fas fa-tachometer-alt' },
+  { kalit: 'kassa',        nomi: 'Sotuv',          icon: 'fas fa-cash-register'  },
+  { kalit: 'kassa_hisobi', nomi: 'Kassa hisobi',   icon: 'fas fa-wallet'         },
+  { kalit: 'mahsulotlar',  nomi: 'Ombor',          icon: 'fas fa-boxes'          },
+  { kalit: 'etiketka',     nomi: 'Etiketka',       icon: 'fas fa-tag'            },
+  { kalit: 'brendlar',     nomi: 'Brendlar',       icon: 'fas fa-trademark'      },
+  { kalit: 'hisobot',      nomi: 'Hisobotlar',     icon: 'fas fa-chart-bar'      },
+  { kalit: 'mijozlar',     nomi: 'Mijozlar',       icon: 'fas fa-users'          },
+  { kalit: 'jurnal',       nomi: 'Jurnal',         icon: 'fas fa-book'           },
+  { kalit: 'ai',           nomi: 'AI Yordamchi',   icon: 'fas fa-robot'          },
+  { kalit: 'xodimlar',     nomi: 'Xodimlar (HR)', icon: 'fas fa-id-badge'       },
+  { kalit: 'sozlamalar',   nomi: 'Sozlamalar',     icon: 'fas fa-cog'            },
+];
+
+function ruxsatlarniOl(x) {
+  // ruxsatlar JSON string yoki null
+  if (!x || !x.ruxsatlar) return null; // null = hamma narsaga ruxsat (admin yoki belgilanmagan)
+  try {
+    if (typeof x.ruxsatlar === 'string') return JSON.parse(x.ruxsatlar);
+    return x.ruxsatlar;
+  } catch { return null; }
+}
+
 function xodimFormKontent(x = null) {
+  const mavjudRuxsatlar = x ? ruxsatlarniOl(x) : null;
+  const isAdmin = x && x.rol === 'admin';
+  // Admin bo'lsa barcha bo'limlarga ruxsat — checkbox disabled
+  const ruxsatlarHtml = `
+    <div class="form-group" style="margin-top:8px">
+      <label style="display:flex;align-items:center;justify-content:space-between">
+        <span><i class="fas fa-shield-alt" style="color:#8b5cf6"></i> Bo'limlarga kirish ruxsati</span>
+        <span style="font-size:11px;color:#94a3b8">Admin = barcha bo'limlarga kiradi</span>
+      </label>
+      <div id="ruxsatlarBlok" style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-top:6px;background:#f8fafc">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="ruxsatHammaTanla(true)" style="font-size:11px">
+            ✅ Hammasini tanlash
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="ruxsatHammaTanla(false)" style="font-size:11px">
+            ❌ Hammasini olib tashlash
+          </button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          ${BOLIMLAR.map(b => {
+            // null = barcha ruxsat (default)
+            const checked = mavjudRuxsatlar === null ? true : (mavjudRuxsatlar[b.kalit] !== false);
+            return `
+              <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;
+                border-radius:6px;cursor:pointer;border:1px solid #e2e8f0;background:white;
+                transition:all 0.15s"
+                onmouseover="this.style.background='#f0f9ff'"
+                onmouseout="this.style.background='white'">
+                <input type="checkbox" name="ruxsat_${b.kalit}"
+                  id="ruxsat_${b.kalit}"
+                  ${checked ? 'checked' : ''}
+                  style="width:15px;height:15px;cursor:pointer"
+                  onchange="ruxsatCheckOzgartir()">
+                <i class="${b.icon}" style="color:#64748b;width:14px;font-size:12px"></i>
+                <span style="font-size:13px">${b.nomi}</span>
+              </label>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+
   return `
     <form onsubmit="xodimSaqlash(event,${x ? x.id : 'null'})">
       <div class="form-row">
@@ -186,13 +267,13 @@ function xodimFormKontent(x = null) {
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 12px;
               border:2px solid ${x&&x.rol==='kassir'?'#3b82f6':'#e2e8f0'};border-radius:8px;flex:1">
               <input type="radio" name="rol" value="kassir" ${!x||x.rol==='kassir'?'checked':''}
-                ${x&&x.username==='admin'?'disabled':''}>
+                ${x&&x.username==='admin'?'disabled':''} onchange="rolOzgartirildiBolimlar(this.value)">
               💼 Kassir
             </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 12px;
               border:2px solid ${x&&x.rol==='admin'?'#f59e0b':'#e2e8f0'};border-radius:8px;flex:1">
               <input type="radio" name="rol" value="admin" ${x&&x.rol==='admin'?'checked':''}
-                ${x&&x.username==='admin'?'disabled':''}>
+                ${x&&x.username==='admin'?'disabled':''} onchange="rolOzgartirildiBolimlar(this.value)">
               👑 Admin
             </label>
           </div>
@@ -211,11 +292,66 @@ function xodimFormKontent(x = null) {
             <option value="0" ${!x.faol?'selected':''}>❌ Nofaol</option>
           </select>
         </div>` : ''}
+
+      ${ruxsatlarHtml}
+
       <div class="modal-footer" style="padding:0;margin-top:10px">
         <button type="button" class="btn btn-secondary" onclick="modalYop()">Bekor</button>
         <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Saqlash</button>
       </div>
     </form>`;
+}
+
+// Rolni o'zgartirish — admin tanlansa checkboxlar blokini bildirish
+function rolOzgartirildiBolimlar(rol) {
+  const blok = document.getElementById('ruxsatlarBlok');
+  if (!blok) return;
+  if (rol === 'admin') {
+    blok.style.opacity = '0.5';
+    blok.style.pointerEvents = 'none';
+    blok.title = 'Admin barcha bo\'limlarga kira oladi';
+    // Hammasini tanlash
+    BOLIMLAR.forEach(b => {
+      const el = document.getElementById('ruxsat_' + b.kalit);
+      if (el) el.checked = true;
+    });
+  } else {
+    blok.style.opacity = '1';
+    blok.style.pointerEvents = '';
+    blok.title = '';
+  }
+}
+
+function ruxsatHammaTanla(holat) {
+  BOLIMLAR.forEach(b => {
+    const el = document.getElementById('ruxsat_' + b.kalit);
+    if (el) el.checked = holat;
+  });
+}
+
+function ruxsatCheckOzgartir() {
+  // Hech narsa bo'lmasa — hech bo'lmaganda bitta tanlangan bo'lsin
+  const birorBiri = BOLIMLAR.some(b => {
+    const el = document.getElementById('ruxsat_' + b.kalit);
+    return el && el.checked;
+  });
+  if (!birorBiri) {
+    // Dashboard ni majburiy ochiq qol
+    const dash = document.getElementById('ruxsat_dashboard');
+    if (dash) dash.checked = true;
+    toast('⚠️ Kamida bitta bo\'lim ruxsati bo\'lishi kerak!', 'warning');
+  }
+}
+
+// Formadan ruxsatlar ob'ektini yig'ish
+function ruxsatlarFormOl() {
+  const obj = {};
+  BOLIMLAR.forEach(b => {
+    const el = document.getElementById('ruxsat_' + b.kalit);
+    obj[b.kalit] = el ? el.checked : true;
+  });
+  return obj;
+}
 }
 
 function xodimQosh() {
@@ -235,19 +371,25 @@ async function xodimSaqlash(e, id) {
   e.preventDefault();
   const form = e.target;
   const rolRadio = form.querySelector('[name=rol]:checked');
+  const rol = rolRadio ? rolRadio.value : 'kassir';
+
+  // Ruxsatlarni yig'ish — admin bo'lsa null (barcha ruxsat)
+  const ruxsatlar = rol === 'admin' ? null : ruxsatlarFormOl();
+
   const data = {
     ism: form.ism.value,
     familiya: form.familiya.value,
     username: form.username.value,
     parol: form.parol.value || undefined,
-    rol: rolRadio ? rolRadio.value : 'kassir',
+    rol,
     telefon: form.telefon.value,
-    faol: form.faol ? parseInt(form.faol.value) : 1
+    faol: form.faol ? parseInt(form.faol.value) : 1,
+    ruxsatlar
   };
   if (!data.parol) delete data.parol;
   try {
-    if (id) { await apiPut('/foydalanuvchilar/' + id, data); toast('Xodim yangilandi!'); }
-    else { await apiPost('/foydalanuvchilar', data); toast('Xodim qo\'shildi!'); }
+    if (id) { await apiPut('/foydalanuvchilar/' + id, data); toast('✅ Xodim yangilandi!'); }
+    else { await apiPost('/foydalanuvchilar', data); toast('✅ Xodim qo\'shildi!'); }
     modalYop();
     xodimlarRoyxatYukla();
   } catch (e) { toast(e.message, 'error'); }
@@ -261,4 +403,41 @@ function xodimOchir(id, nomi) {
       xodimlarRoyxatYukla();
     } catch (e) { toast(e.message, 'error'); }
   });
+}
+
+
+// Xodim ruxsatlarini ko'rsatish (mini popup)
+async function xodimRuxsatlarKorsatish(id, ism) {
+  try {
+    const xodimlar = await apiGet('/foydalanuvchilar');
+    const x = xodimlar.find(u => u.id == id);
+    if (!x) return;
+    const rx = ruxsatlarniOl(x);
+    const html = `
+      <div style="max-width:360px">
+        <p style="color:#64748b;font-size:13px;margin-bottom:12px">
+          <b>${ism}</b> foydalanuvchisining bo'limlarga kirish ruxsatlari:
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">
+          ${BOLIMLAR.map(b => {
+            const ruxsat = !rx || rx[b.kalit] !== false;
+            return `
+              <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;
+                border-radius:7px;border:1px solid ${ruxsat?'#bbf7d0':'#fecaca'};
+                background:${ruxsat?'#f0fdf4':'#fff1f2'}">
+                <i class="${b.icon}" style="color:${ruxsat?'#16a34a':'#dc2626'};width:14px;font-size:12px"></i>
+                <span style="font-size:13px;flex:1">${b.nomi}</span>
+                <span style="font-size:14px">${ruxsat?'✅':'❌'}</span>
+              </div>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" style="flex:1" onclick="modalYop()">Yopish</button>
+          <button class="btn btn-primary" style="flex:1" onclick="modalYop();xodimTahrir(${id})">
+            <i class="fas fa-edit"></i> Tahrirlash
+          </button>
+        </div>
+      </div>`;
+    modalOch(`${ism} — Ruxsatlar`, html);
+  } catch(e) { toast(e.message, 'error'); }
 }

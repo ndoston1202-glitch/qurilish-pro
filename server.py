@@ -316,6 +316,12 @@ def init_db():
         conn.commit()
     except: pass
 
+    # v10: foydalanuvchilar ruxsatlar ustuni
+    try:
+        conn.execute("ALTER TABLE foydalanuvchilar ADD COLUMN ruxsatlar TEXT DEFAULT NULL")
+        conn.commit()
+    except: pass
+
     conn.close()
     print("✅ Database tayyor!")
 
@@ -621,7 +627,7 @@ O'zbek tilida batafsil javob ber."""
         try:
             # FOYDALANUVCHILAR
             if path == '/api/foydalanuvchilar':
-                rows = conn.execute("SELECT id,ism,familiya,username,rol,telefon,yaratilgan,faol FROM foydalanuvchilar").fetchall()
+                rows = conn.execute("SELECT id,ism,familiya,username,rol,telefon,yaratilgan,faol,ruxsatlar FROM foydalanuvchilar").fetchall()
                 return self.send_json(rows_to_list(rows))
 
             # MIJOZLAR
@@ -1414,12 +1420,13 @@ O'zbek tilida batafsil javob ber."""
         try:
             m = re.match(r'^/api/foydalanuvchilar/(\d+)$', path)
             if m:
+                ruxsatlar = json.dumps(body.get('ruxsatlar'), ensure_ascii=False) if body.get('ruxsatlar') is not None else None
                 if body.get('parol'):
-                    conn.execute("UPDATE foydalanuvchilar SET ism=?,familiya=?,username=?,parol=?,rol=?,telefon=?,faol=? WHERE id=?",
-                        (body['ism'],body['familiya'],body['username'],body['parol'],body['rol'],body.get('telefon',''),body.get('faol',1),m.group(1)))
+                    conn.execute("UPDATE foydalanuvchilar SET ism=?,familiya=?,username=?,parol=?,rol=?,telefon=?,faol=?,ruxsatlar=? WHERE id=?",
+                        (body['ism'],body['familiya'],body['username'],body['parol'],body['rol'],body.get('telefon',''),body.get('faol',1),ruxsatlar,m.group(1)))
                 else:
-                    conn.execute("UPDATE foydalanuvchilar SET ism=?,familiya=?,username=?,rol=?,telefon=?,faol=? WHERE id=?",
-                        (body['ism'],body['familiya'],body['username'],body['rol'],body.get('telefon',''),body.get('faol',1),m.group(1)))
+                    conn.execute("UPDATE foydalanuvchilar SET ism=?,familiya=?,username=?,rol=?,telefon=?,faol=?,ruxsatlar=? WHERE id=?",
+                        (body['ism'],body['familiya'],body['username'],body['rol'],body.get('telefon',''),body.get('faol',1),ruxsatlar,m.group(1)))
                 conn.commit(); return self.send_json({'muvaffaqiyat':True})
 
             m = re.match(r'^/api/kategoriyalar/(\d+)$', path)
