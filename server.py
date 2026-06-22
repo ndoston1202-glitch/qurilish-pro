@@ -370,13 +370,24 @@ def telegram_sozlamalarni_ol():
     except: return None
 
 
+def tg_yuborish_bg(matn):
+    """Telegram ga background thread orqali xabar yuborish"""
+    def _():
+        try:
+            tg = telegram_sozlamalarni_ol()
+            if not tg: return
+            telegram_yuborish(tg['token'], tg['chat_id'], matn)
+        except Exception as e:
+            print(f"TG xato: {e}")
+    threading.Thread(target=_, daemon=True).start()
+
+
 def telegram_sotuv_bildirishnoma(sotuv_id, chek_raqam, kassir_ismi, jami_summa, tolov_turi, mijoz_ismi=''):
     """Har sotuv bo'lganda Telegram ga yuborish (background thread)"""
     def _yuborish():
         try:
             tg = telegram_sozlamalarni_ol()
             if not tg: return
-            # har_sotuv yoqilmagan bo'lsa ham yuborish (default True)
             if tg['sozlamalar'].get('har_sotuv') == False: return
             tolov_icon = 'Naqd' if tolov_turi == 'naqd' else 'Karta' if tolov_turi == 'karta' else 'Qarz'
             summa_format = f"{int(jami_summa):,}".replace(',', ' ')
@@ -469,29 +480,32 @@ def telegram_kunlik_hisobot_yuborish(kun=None):
 
 
 def kunlik_hisobot_scheduler():
-    """Har kuni sozlamadagi vaqtda kunlik hisobot yuborish"""
+    """Har kuni sozlamadagi vaqtda KECHA ning hisobotini yuborish"""
     print("⏰ Kunlik hisobot scheduler ishga tushdi")
     _oxirgi_yuborilgan = [None]
 
     while True:
         try:
             hozir = datetime.now()
-            kun = hozir.strftime('%Y-%m-%d')
+            bugun_kun = hozir.strftime('%Y-%m-%d')
             soat = hozir.hour
             minut = hozir.minute
 
             # Sozlamalardan hisobot vaqtini olish
             tg = telegram_sozlamalarni_ol()
-            hisobot_soat = 22  # default
+            hisobot_soat = 8  # default: ertalab 08:00 da kechagi hisobot
             if tg and tg['sozlamalar'].get('hisobot_soat') is not None:
                 try: hisobot_soat = int(tg['sozlamalar']['hisobot_soat'])
                 except: pass
 
             # Belgilangan vaqtda yuborish
-            if soat == hisobot_soat and minut == 0 and _oxirgi_yuborilgan[0] != kun:
-                _oxirgi_yuborilgan[0] = kun
-                telegram_kunlik_hisobot_yuborish(kun)
-                print(f"📊 Kunlik hisobot yuborildi: {kun} soat {hisobot_soat}:00")
+            if soat == hisobot_soat and minut == 0 and _oxirgi_yuborilgan[0] != bugun_kun:
+                _oxirgi_yuborilgan[0] = bugun_kun
+                # KECHA ning sanasini hisoblash
+                from datetime import timedelta
+                kecha = (hozir - timedelta(days=1)).strftime('%Y-%m-%d')
+                telegram_kunlik_hisobot_yuborish(kecha)
+                print(f"📊 Kecha ({kecha}) hisoboti yuborildi: soat {hisobot_soat}:00")
 
             time.sleep(60)
         except Exception as e:
@@ -1394,7 +1408,15 @@ O'zbek tilida batafsil javob ber."""
                         ('qoshildi', r, body['nomi'], body.get('birlik','dona'),
                          body.get('kelish_narxi',0), body.get('sotish_narxi',0),
                          body.get('miqdor',0), foydalanuvchi_id, fism, 'Yangi mahsulot qo\'shildi'))
-                    conn.commit(); return self.send_json({'muvaffaqiyat':True,'id':r})
+                    conn.commit()
+                    tg_yuborish_bg(
+                        f"Yangi mahsulot qoshildi\n"
+                        f"Nomi: {body['nomi']}\n"
+                        f"Miqdor: {body.get('miqdor',0)} {body.get('birlik','dona')}\n"
+                        f"Sotish narxi: {int(body.get('sotish_narxi',0)):,} som\n".replace(',', ' ') +
+                        f"Vaqt: {datetime.now().strftime('%H:%M:%S')}"
+                    )
+                    return self.send_json({'muvaffaqiyat':True,'id':r})
                 except Exception as e: return self.send_error_json(str(e))
 
             if path == '/api/sotuvlar':
@@ -1505,7 +1527,15 @@ O'zbek tilida batafsil javob ber."""
             if path == '/api/xarajatlar':
                 conn.execute("INSERT INTO xarajatlar (nomi,summa,kategoriya,foydalanuvchi_id,izoh) VALUES (?,?,?,?,?)",
                     (body['nomi'],body['summa'],body.get('kategoriya',''),body.get('foydalanuvchi_id'),body.get('izoh','')))
-                conn.commit(); return self.send_json({'muvaffaqiyat':True})
+                conn.commit()
+                tg_yuborish_bg(
+                    f"Xarajat qoshildi\n"
+                    f"Nomi: {body['nomi']}\n"
+                    f"Summa: {int(body['summa']):,} som\n".replace(',', ' ') +
+                    (f"Kategoriya: {body.get('kategoriya','')}\n" if body.get('kategoriya') else '') +
+                    f"Vaqt: {datetime.now().strftime('%H:%M:%S')}"
+                )
+                return self.send_json({'muvaffaqiyat':True})
 
             # KASSA HARAKATI (kirim/chiqim)
             if path == '/api/kassa_harakatlari':
@@ -1524,6 +1554,14 @@ O'zbek tilida batafsil javob ber."""
                     "INSERT INTO kassa_harakatlari (tur,nomi,summa,tolov_turi,kategoriya,foydalanuvchi_id,foydalanuvchi_ismi,izoh) VALUES (?,?,?,?,?,?,?,?)",
                     (tur, nomi, summa, tolov, kateg, f_id, fism, izoh))
                 conn.commit()
+                tur_matn = 'Kirim' if tur == 'kirim' else 'Chiqim'
+                tg_yuborish_bg(
+                    f"Kassa {tur_matn}\n"
+                    f"Nomi: {nomi}\n"
+                    f"Summa: {int(summa):,} som\n".replace(',', ' ') +
+                    (f"Kategoriya: {kateg}\n" if kateg else '') +
+                    f"Vaqt: {datetime.now().strftime('%H:%M:%S')}"
+                )
                 return self.send_json({'muvaffaqiyat': True})
             if path == '/api/qaytarishlar':
                 mahsulotlar = body.get('mahsulotlar', [])
@@ -1539,6 +1577,13 @@ O'zbek tilida batafsil javob ber."""
                         (r, m['mahsulot_id'], m['miqdor'], m['narxi'], m['miqdor']*m['narxi']))
                     conn.execute("UPDATE mahsulotlar SET miqdor=miqdor+? WHERE id=?", (m['miqdor'], m['mahsulot_id']))
                 conn.commit()
+                tg_yuborish_bg(
+                    f"Qaytarish!\n"
+                    f"Chek: {chek}\n"
+                    f"Summa: {int(jami):,} som\n".replace(',', ' ') +
+                    (f"Sabab: {body.get('sabab','')}\n" if body.get('sabab') else '') +
+                    f"Vaqt: {datetime.now().strftime('%H:%M:%S')}"
+                )
                 return self.send_json({'muvaffaqiyat':True, 'id':r, 'chek_raqam':chek, 'jami_summa':jami})
 
             # EXCEL (CSV) IMPORT

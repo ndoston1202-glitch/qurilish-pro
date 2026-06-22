@@ -705,9 +705,9 @@ async function sozIntegratsiyaKorsatish() {
                 <span style="font-size:13px;color:#64748b">🕙 Kunlik hisobot yuborish vaqti:</span>
                 <select id="tg_hisobot_soat" style="border:1px solid #e2e8f0;border-radius:6px;
                   padding:4px 8px;font-size:13px;background:white">
-                  ${Array.from({length:24},(_,i)=>`<option value="${i}" ${i===22?'selected':''}>${String(i).padStart(2,'0')}:00</option>`).join('')}
+                  ${Array.from({length:24},(_,i)=>`<option value="${i}" ${i===8?'selected':''}>${String(i).padStart(2,'0')}:00</option>`).join('')}
                 </select>
-                <span style="font-size:11px;color:#94a3b8">Har kuni avtomatik</span>
+                <span style="font-size:11px;color:#94a3b8">Ertasi kuni shu vaqtda kechagi hisobot</span>
               </div>
             </div>
           </div>
