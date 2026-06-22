@@ -22,6 +22,24 @@ if %errorlevel% neq 0 (
     exit
 )
 
+echo  [OK] Python topildi
+
+:: Git bor yoki yo'qligini tekshirish
+git --version >nul 2>&1
+if %errorlevel% equ 0 (
+    echo  [..] Yangi versiyani yuklab olinmoqda...
+    git pull
+    if %errorlevel% equ 0 (
+        echo  [OK] Dastur yangilandi!
+    ) else (
+        echo  [!]  Yangilashda xatolik - mavjud versiya bilan davom etiladi
+    )
+) else (
+    echo  [!]  Git topilmadi - yangilanish o'tkazib yuborildi
+)
+
+echo.
+
 :: .env fayldan API key yuklash
 if exist .env (
     for /f "tokens=1,2 delims==" %%a in (.env) do (
@@ -29,8 +47,10 @@ if exist .env (
     )
 )
 
-echo  [OK] Python topildi
 echo  [..] Server ishga tushirilmoqda...
+echo.
+echo  Dastur manzili: http://localhost:3000
+echo  To'xtatish uchun: Ctrl+C
 echo.
 
 :: 2 soniya kutib brauzer ochish
