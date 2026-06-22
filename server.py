@@ -638,18 +638,69 @@ O'zbek tilida batafsil javob ber."""
             # MIJOZLAR
             if path == '/api/mijozlar':
                 q = qp('qidiruv')
+                bugun = datetime.now().strftime('%Y-%m-%d')
                 if q:
                     rows = conn.execute("SELECT * FROM mijozlar WHERE faol=1 AND (ism LIKE ? OR familiya LIKE ? OR telefon LIKE ?) ORDER BY ism", (f'%{q}%',f'%{q}%',f'%{q}%')).fetchall()
                 else:
                     rows = conn.execute("SELECT * FROM mijozlar WHERE faol=1 ORDER BY ism").fetchall()
-                return self.send_json(rows_to_list(rows))
+                # Har bir mijoz uchun ochiq qarz muddati ma'lumotini qo'shish
+                result = []
+                for row in rows:
+                    d = row_to_dict(row)
+                    # Eng yaqin ochiq qarz (kechikkan yoki yaqin)
+                    qarz_row = conn.execute("""
+                        SELECT muddat,
+                            CASE
+                                WHEN muddat IS NULL THEN 'muddatsiz'
+                                WHEN date(muddat) < ? THEN 'kechikkan'
+                                WHEN date(muddat) = ? THEN 'bugun'
+                                WHEN julianday(muddat) - julianday(?) <= 3 THEN 'yaqin'
+                                ELSE 'normal'
+                            END as qarz_status,
+                            CAST(julianday(?) - julianday(muddat) AS INTEGER) as kechikkan_kun,
+                            COUNT(*) as ochiq_qarz_soni,
+                            SUM(qoldi) as qarz_qoldi
+                        FROM qarz_tarixi
+                        WHERE mijoz_id=? AND holat='ochiq'
+                    """, (bugun, bugun, bugun, bugun, row['id'])).fetchone()
+                    if qarz_row and qarz_row['ochiq_qarz_soni']:
+                        d['ochiq_qarz_soni'] = qarz_row['ochiq_qarz_soni']
+                        d['qarz_qoldi'] = qarz_row['qarz_qoldi'] or 0
+                        d['qarz_status'] = qarz_row['qarz_status']
+                        d['qarz_muddat'] = qarz_row['muddat']
+                        d['kechikkan_kun'] = max(0, qarz_row['kechikkan_kun'] or 0)
+                    else:
+                        d['ochiq_qarz_soni'] = 0
+                        d['qarz_qoldi'] = 0
+                        d['qarz_status'] = None
+                        d['qarz_muddat'] = None
+                        d['kechikkan_kun'] = 0
+                    result.append(d)
+                return self.send_json(result)
 
             m = re.match(r'^/api/mijozlar/(\d+)$', path)
             if m:
                 row = conn.execute("SELECT * FROM mijozlar WHERE id=?", (m.group(1),)).fetchone()
                 if not row: return self.send_error_json('Mijoz topilmadi', 404)
                 sotuvlar = rows_to_list(conn.execute("SELECT s.*,f.ism||' '||f.familiya as kassir_ismi FROM sotuvlar s LEFT JOIN foydalanuvchilar f ON s.kassir_id=f.id WHERE s.mijoz_id=? ORDER BY s.sana DESC LIMIT 20", (m.group(1),)).fetchall())
-                d = row_to_dict(row); d['sotuvlar'] = sotuvlar
+                bugun = datetime.now().strftime('%Y-%m-%d')
+                qarzlar = rows_to_list(conn.execute("""
+                    SELECT q.*,
+                        CASE
+                            WHEN q.muddat IS NULL THEN 'muddatsiz'
+                            WHEN date(q.muddat) < ? THEN 'kechikkan'
+                            WHEN date(q.muddat) = ? THEN 'bugun'
+                            WHEN julianday(q.muddat) - julianday(?) <= 3 THEN 'yaqin'
+                            ELSE 'normal'
+                        END as status,
+                        CAST(julianday(?) - julianday(q.muddat) AS INTEGER) as kechikkan_kun
+                    FROM qarz_tarixi q
+                    WHERE q.mijoz_id=?
+                    ORDER BY COALESCE(q.muddat,'9999') ASC, q.yaratilgan DESC
+                """, (bugun, bugun, bugun, bugun, m.group(1))).fetchall())
+                d = row_to_dict(row)
+                d['sotuvlar'] = sotuvlar
+                d['qarzlar'] = qarzlar
                 return self.send_json(d)
 
             # KATEGORIYALAR

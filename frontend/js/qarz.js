@@ -336,3 +336,20 @@ async function qarzMuddatSaqla(id) {
     qarzlarYukla();
   } catch(e) { toast(e.message, 'error'); }
 }
+
+
+// ===== QARZ BADGE (sidebar) =====
+async function qarzBadgeYanila() {
+  try {
+    const qarzlar = await apiGet('/qarz_tarixi?holat=ochiq');
+    const kechikkan = qarzlar.filter(q => q.status === 'kechikkan' || q.status === 'bugun');
+    const badge = document.getElementById('qarzBadge');
+    if (!badge) return;
+    if (kechikkan.length > 0) {
+      badge.textContent = kechikkan.length;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch {}
+}

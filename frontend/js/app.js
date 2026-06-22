@@ -51,7 +51,7 @@ function sidebarMenuYanila() {
 
       // menu-{kalit} ID li elementlarni tekshirish
       const sahifaMenular = [
-        'dashboard', 'hisobot', 'kassa', 'kassa_hisobi',
+        'dashboard', 'hisobot', 'kassa', 'kassa_hisobi', 'qarzlar',
         'mahsulotlar', 'etiketka', 'brendlar',
         'mijozlar', 'jurnal', 'ai', 'xodimlar', 'sozlamalar'
       ];
@@ -64,7 +64,7 @@ function sidebarMenuYanila() {
     } catch {}
   } else if (joriyFoydalanuvchi.rol === 'admin') {
     // Admin — hamma menyu ko'rinsin
-    ['dashboard','hisobot','kassa','kassa_hisobi','mahsulotlar','etiketka',
+    ['dashboard','hisobot','kassa','kassa_hisobi','qarzlar','mahsulotlar','etiketka',
      'brendlar','mijozlar','jurnal','ai','xodimlar','sozlamalar'].forEach(kalit => {
       const el = document.getElementById('menu-' + kalit);
       if (el) el.style.display = '';
@@ -132,6 +132,7 @@ function sahifaOch(nomi) {
     dashboard:    'Dashboard',
     kassa:        'Sotuv',
     kassa_hisobi: 'Kassa hisobi',
+    qarzlar:      'Qarzlar jadvali',
     mahsulotlar:  'Ombor',
     etiketka:     'Etiketka dizayner',
     hisobot:      'Hisobotlar',
@@ -154,6 +155,7 @@ function sahifaOch(nomi) {
     case 'dashboard': dashboardYukla(); break;
     case 'kassa': kassaYukla(); break;
     case 'kassa_hisobi': kassaHisobiYukla(); break;
+    case 'qarzlar': qarzlarSahifaYukla(); break;
     case 'mahsulotlar': mahsulotlarYukla('mahsulotlar'); break;
     case 'ombor': mahsulotlarYukla('ombor'); break;
     case 'etiketka': etiketkaYukla(null); break;
