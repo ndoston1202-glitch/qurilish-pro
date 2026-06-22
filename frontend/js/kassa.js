@@ -859,7 +859,9 @@ async function sotuvYuborish(qarzMuddat, qarzIzoh) {
     tolov_turi,
     tolov_tafsilotlari: tolovQatorlarData.filter(q => q.summa > 0),
     mijoz_id: tanlangan_mijoz ? tanlangan_mijoz.id : null,
-    mijoz_ismi: tanlangan_mijoz ? tanlangan_mijoz.toliqIsm : ''
+    mijoz_ismi: tanlangan_mijoz ? tanlangan_mijoz.toliqIsm : '',
+    qarz_muddat: qarzMuddat || null,
+    qarz_izoh: qarzIzoh || ''
   };
 
   try {
