@@ -1586,6 +1586,154 @@ O'zbek tilida batafsil javob ber."""
                     'jami_sotuv': row_to_dict(conn.execute("SELECT COUNT(*) as son,COALESCE(SUM(jami_summa),0) as jami FROM sotuvlar").fetchone()),
                 })
 
+            # ===== OMBOR HISOBOTLARI =====
+            if path == '/api/hisobot/ombor/kirim':
+                bosh = qp('boshlanish') or datetime.now().strftime('%Y-%m-01')
+                tug  = qp('tugash') or datetime.now().strftime('%Y-%m-%d')
+                rows = rows_to_list(conn.execute("""
+                    SELECT ok.*, m.nomi, m.birlik
+                    FROM ombor_kirim ok JOIN mahsulotlar m ON ok.mahsulot_id=m.id
+                    WHERE date(ok.sana)>=? AND date(ok.sana)<=?
+                    ORDER BY ok.sana DESC
+                """, (bosh, tug)).fetchall())
+                jami_qiymat = sum(r['miqdor']*(r['kelish_narxi'] or 0) for r in rows)
+                return self.send_json({'rows': rows, 'jami_qiymat': jami_qiymat})
+
+            if path == '/api/hisobot/ombor/top_mahsulot':
+                bosh = qp('boshlanish') or datetime.now().strftime('%Y-%m-01')
+                tug  = qp('tugash') or datetime.now().strftime('%Y-%m-%d')
+                rows = rows_to_list(conn.execute("""
+                    SELECT m.nomi, m.birlik, m.miqdor as qoldiq,
+                        SUM(st.miqdor) as sotilgan_miqdor,
+                        SUM(st.jami) as sotilgan_summa,
+                        COUNT(DISTINCT st.sotuv_id) as sotuv_soni
+                    FROM sotuv_tafsilotlari st
+                    JOIN mahsulotlar m ON st.mahsulot_id=m.id
+                    JOIN sotuvlar s ON st.sotuv_id=s.id
+                    WHERE date(s.sana)>=? AND date(s.sana)<=?
+                    GROUP BY m.id ORDER BY sotilgan_summa DESC LIMIT 20
+                """, (bosh, tug)).fetchall())
+                return self.send_json(rows)
+
+            if path == '/api/hisobot/ombor/kam':
+                rows = rows_to_list(conn.execute("""
+                    SELECT m.nomi, m.birlik, m.miqdor, m.min_miqdor,
+                        m.sotish_narxi, m.kelish_narxi,
+                        k.nomi as kategoriya_nomi,
+                        CASE WHEN m.miqdor<=0 THEN 'tugagan'
+                             WHEN m.miqdor<=m.min_miqdor THEN 'kam'
+                             ELSE 'normal' END as holat
+                    FROM mahsulotlar m
+                    LEFT JOIN kategoriyalar k ON m.kategoriya_id=k.id
+                    WHERE m.faol=1 AND m.miqdor<=m.min_miqdor
+                    ORDER BY m.miqdor ASC
+                """).fetchall())
+                return self.send_json(rows)
+
+            if path == '/api/hisobot/ombor/aylanma':
+                bosh = qp('boshlanish') or datetime.now().strftime('%Y-%m-01')
+                tug  = qp('tugash') or datetime.now().strftime('%Y-%m-%d')
+                rows = rows_to_list(conn.execute("""
+                    SELECT m.nomi, m.birlik, m.miqdor as hozir_qoldiq,
+                        m.kelish_narxi, m.sotish_narxi,
+                        COALESCE(kirim.jami_kirim,0) as jami_kirim,
+                        COALESCE(chiqim.jami_chiqim,0) as jami_chiqim,
+                        COALESCE(kirim.kirim_miqdor,0) as kirim_miqdor,
+                        COALESCE(chiqim.chiqim_miqdor,0) as chiqim_miqdor
+                    FROM mahsulotlar m
+                    LEFT JOIN (
+                        SELECT mahsulot_id,
+                            SUM(miqdor) as kirim_miqdor,
+                            SUM(miqdor*kelish_narxi) as jami_kirim
+                        FROM ombor_kirim WHERE date(sana)>=? AND date(sana)<=?
+                        GROUP BY mahsulot_id
+                    ) kirim ON m.id=kirim.mahsulot_id
+                    LEFT JOIN (
+                        SELECT st.mahsulot_id,
+                            SUM(st.miqdor) as chiqim_miqdor,
+                            SUM(st.jami) as jami_chiqim
+                        FROM sotuv_tafsilotlari st
+                        JOIN sotuvlar s ON st.sotuv_id=s.id
+                        WHERE date(s.sana)>=? AND date(s.sana)<=?
+                        GROUP BY st.mahsulot_id
+                    ) chiqim ON m.id=chiqim.mahsulot_id
+                    WHERE m.faol=1
+                    AND (COALESCE(kirim.kirim_miqdor,0)>0 OR COALESCE(chiqim.chiqim_miqdor,0)>0)
+                    ORDER BY COALESCE(chiqim.jami_chiqim,0) DESC
+                """, (bosh, tug, bosh, tug)).fetchall())
+                return self.send_json(rows)
+
+            # ===== MIJOZLAR HISOBOTLARI =====
+            if path == '/api/hisobot/mijozlar/top':
+                bosh = qp('boshlanish') or datetime.now().strftime('%Y-%m-01')
+                tug  = qp('tugash') or datetime.now().strftime('%Y-%m-%d')
+                rows = rows_to_list(conn.execute("""
+                    SELECT mj.ism||' '||COALESCE(mj.familiya,'') as ismi,
+                        mj.telefon, mj.qarz,
+                        COUNT(s.id) as sotuv_soni,
+                        COALESCE(SUM(s.jami_summa),0) as jami_xarid,
+                        MAX(s.sana) as oxirgi_sotuv
+                    FROM mijozlar mj
+                    JOIN sotuvlar s ON s.mijoz_id=mj.id
+                    WHERE date(s.sana)>=? AND date(s.sana)<=?
+                    GROUP BY mj.id
+                    ORDER BY jami_xarid DESC LIMIT 20
+                """, (bosh, tug)).fetchall())
+                return self.send_json(rows)
+
+            if path == '/api/hisobot/mijozlar/yangi':
+                bosh = qp('boshlanish') or datetime.now().strftime('%Y-%m-01')
+                tug  = qp('tugash') or datetime.now().strftime('%Y-%m-%d')
+                rows = rows_to_list(conn.execute("""
+                    SELECT mj.*,
+                        COUNT(s.id) as sotuv_soni,
+                        COALESCE(SUM(s.jami_summa),0) as jami_xarid
+                    FROM mijozlar mj
+                    LEFT JOIN sotuvlar s ON s.mijoz_id=mj.id
+                    WHERE date(mj.yaratilgan)>=? AND date(mj.yaratilgan)<=?
+                    AND mj.faol=1
+                    GROUP BY mj.id ORDER BY mj.yaratilgan DESC
+                """, (bosh, tug)).fetchall())
+                return self.send_json(rows)
+
+            if path == '/api/hisobot/mijozlar/aktiv':
+                bosh = qp('boshlanish') or datetime.now().strftime('%Y-%m-01')
+                tug  = qp('tugash') or datetime.now().strftime('%Y-%m-%d')
+                rows = rows_to_list(conn.execute("""
+                    SELECT mj.ism||' '||COALESCE(mj.familiya,'') as ismi,
+                        mj.telefon, mj.qarz,
+                        COUNT(s.id) as sotuv_soni,
+                        COALESCE(SUM(s.jami_summa),0) as jami_xarid,
+                        MAX(s.sana) as oxirgi_sotuv,
+                        MIN(s.sana) as birinchi_sotuv
+                    FROM mijozlar mj
+                    JOIN sotuvlar s ON s.mijoz_id=mj.id
+                    WHERE mj.faol=1
+                    GROUP BY mj.id
+                    HAVING COUNT(s.id)>=2
+                    ORDER BY sotuv_soni DESC LIMIT 30
+                """).fetchall())
+                return self.send_json(rows)
+
+            # ===== XODIMLAR HISOBOTLARI =====
+            if path == '/api/hisobot/xodimlar/sotuv':
+                bosh = qp('boshlanish') or datetime.now().strftime('%Y-%m-01')
+                tug  = qp('tugash') or datetime.now().strftime('%Y-%m-%d')
+                rows = rows_to_list(conn.execute("""
+                    SELECT f.ism||' '||f.familiya as ismi, f.rol, f.telefon,
+                        COUNT(s.id) as sotuv_soni,
+                        COALESCE(SUM(s.jami_summa),0) as jami_summa,
+                        COALESCE(AVG(s.jami_summa),0) as ort_sotuv,
+                        MAX(s.sana) as oxirgi_sotuv,
+                        COUNT(DISTINCT date(s.sana)) as ish_kunlari
+                    FROM foydalanuvchilar f
+                    LEFT JOIN sotuvlar s ON s.kassir_id=f.id
+                        AND date(s.sana)>=? AND date(s.sana)<=?
+                    WHERE f.faol=1
+                    GROUP BY f.id ORDER BY jami_summa DESC
+                """, (bosh, tug)).fetchall())
+                return self.send_json(rows)
+
             self.send_error_json('Topilmadi', 404)
         except Exception as e:
             self.send_error_json(str(e), 500)

@@ -5,38 +5,54 @@ function hisobotYukla(guruh) {
   hisobotGuruhi = guruh || hisobotGuruhi || 'moliyaviy';
   const kontent = document.getElementById('asosiyKontent');
   kontent.innerHTML = `
-    <!-- ASOSIY 2 GURUH -->
-    <div style="display:flex;gap:10px;margin-bottom:16px">
+    <!-- 3 GURUH -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       <button onclick="hisobotYukla('moliyaviy')"
-        style="flex:1;padding:12px 20px;border-radius:10px;border:2px solid ${hisobotGuruhi==='moliyaviy'?'#2563eb':'#e2e8f0'};
+        style="flex:1;min-width:140px;padding:10px 16px;border-radius:10px;
+        border:2px solid ${hisobotGuruhi==='moliyaviy'?'#2563eb':'#e2e8f0'};
         background:${hisobotGuruhi==='moliyaviy'?'#2563eb':'white'};
         color:${hisobotGuruhi==='moliyaviy'?'white':'#64748b'};
-        cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s">
-        <i class="fas fa-chart-line" style="margin-right:8px"></i>Moliyaviy hisobot
+        cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s">
+        <i class="fas fa-chart-line" style="margin-right:6px"></i>Moliyaviy
       </button>
-      <button onclick="hisobotYukla('mahsulot')"
-        style="flex:1;padding:12px 20px;border-radius:10px;border:2px solid ${hisobotGuruhi==='mahsulot'?'#8b5cf6':'#e2e8f0'};
-        background:${hisobotGuruhi==='mahsulot'?'#8b5cf6':'white'};
-        color:${hisobotGuruhi==='mahsulot'?'white':'#64748b'};
-        cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s">
-        <i class="fas fa-boxes" style="margin-right:8px"></i>Mahsulot hisoboti
+      <button onclick="hisobotYukla('ombor')"
+        style="flex:1;min-width:140px;padding:10px 16px;border-radius:10px;
+        border:2px solid ${hisobotGuruhi==='ombor'?'#8b5cf6':'#e2e8f0'};
+        background:${hisobotGuruhi==='ombor'?'#8b5cf6':'white'};
+        color:${hisobotGuruhi==='ombor'?'white':'#64748b'};
+        cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s">
+        <i class="fas fa-warehouse" style="margin-right:6px"></i>Ombor
+      </button>
+      <button onclick="hisobotYukla('mijozlar')"
+        style="flex:1;min-width:140px;padding:10px 16px;border-radius:10px;
+        border:2px solid ${hisobotGuruhi==='mijozlar'?'#10b981':'#e2e8f0'};
+        background:${hisobotGuruhi==='mijozlar'?'#10b981':'white'};
+        color:${hisobotGuruhi==='mijozlar'?'white':'#64748b'};
+        cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s">
+        <i class="fas fa-users" style="margin-right:6px"></i>Mijozlar
+      </button>
+      <button onclick="hisobotYukla('xodimlar')"
+        style="flex:1;min-width:140px;padding:10px 16px;border-radius:10px;
+        border:2px solid ${hisobotGuruhi==='xodimlar'?'#f59e0b':'#e2e8f0'};
+        background:${hisobotGuruhi==='xodimlar'?'#f59e0b':'white'};
+        color:${hisobotGuruhi==='xodimlar'?'white':'#64748b'};
+        cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s">
+        <i class="fas fa-id-badge" style="margin-right:6px"></i>Xodimlar
       </button>
     </div>
-
-    <!-- KICHIK TABLAR -->
     <div class="hisobot-tabs" id="hisobotTablar" style="margin-bottom:16px"></div>
     <div id="hisobotKontent"></div>`;
 
-  if (hisobotGuruhi === 'moliyaviy') {
-    moliyaviyTablarKorsatish();
-  } else {
-    mahsulotTablarKorsatish();
-  }
+  if      (hisobotGuruhi === 'moliyaviy') moliyaviyTablarKorsatish();
+  else if (hisobotGuruhi === 'ombor')     omborTablarKorsatish();
+  else if (hisobotGuruhi === 'mijozlar')  mijozlarTablarKorsatish();
+  else if (hisobotGuruhi === 'xodimlar')  xodimlarTablarKorsatish();
+  // eski 'mahsulot' — ombor ga yo'naltirish
+  else { hisobotGuruhi = 'ombor'; omborTablarKorsatish(); }
 }
 
 function moliyaviyTablarKorsatish() {
-  const tabDiv = document.getElementById('hisobotTablar');
-  tabDiv.innerHTML = `
+  document.getElementById('hisobotTablar').innerHTML = `
     <button class="tab-btn active" onclick="tabAlmashtir('kunlik',this)">
       <i class="fas fa-calendar-day"></i> Kunlik
     </button>
@@ -52,32 +68,73 @@ function moliyaviyTablarKorsatish() {
   kunlikHisobot();
 }
 
-function mahsulotTablarKorsatish() {
-  const tabDiv = document.getElementById('hisobotTablar');
-  tabDiv.innerHTML = `
-    <button class="tab-btn active" onclick="tabAlmashtir('sotuvlar',this)">
-      <i class="fas fa-list"></i> Sotuvlar tarixi
+function omborTablarKorsatish() {
+  document.getElementById('hisobotTablar').innerHTML = `
+    <button class="tab-btn active" onclick="tabAlmashtir('qoldiq',this)">
+      <i class="fas fa-boxes"></i> Qoldig'i
     </button>
-    <button class="tab-btn" onclick="tabAlmashtir('qoldiq',this)">
-      <i class="fas fa-boxes"></i> Mahsulot qoldig'i
+    <button class="tab-btn" onclick="tabAlmashtir('top_mahsulot',this)">
+      <i class="fas fa-trophy"></i> Top mahsulot
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('kam_qolgan',this)">
+      <i class="fas fa-exclamation-triangle"></i> Kam qolgan
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('kirim_tarixi',this)">
+      <i class="fas fa-truck"></i> Kirim tarixi
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('aylanma',this)">
+      <i class="fas fa-sync-alt"></i> Tovar aylanmasi
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('sotuvlar',this)">
+      <i class="fas fa-list"></i> Sotuvlar tarixi
     </button>
     <button class="tab-btn" onclick="tabAlmashtir('qaytarishlar',this)">
       <i class="fas fa-undo"></i> Qaytarishlar
     </button>`;
-  sotuvlarTarixi();
+  qoldiqHisoboti();
+}
+
+function mijozlarTablarKorsatish() {
+  document.getElementById('hisobotTablar').innerHTML = `
+    <button class="tab-btn active" onclick="tabAlmashtir('top_xaridorlar',this)">
+      <i class="fas fa-crown"></i> Top xaridorlar
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('aktiv_mijozlar',this)">
+      <i class="fas fa-user-check"></i> Aktiv mijozlar
+    </button>
+    <button class="tab-btn" onclick="tabAlmashtir('yangi_mijozlar',this)">
+      <i class="fas fa-user-plus"></i> Yangi mijozlar
+    </button>`;
+  topXaridorlarHisoboti();
+}
+
+function xodimlarTablarKorsatish() {
+  document.getElementById('hisobotTablar').innerHTML = `
+    <button class="tab-btn active" onclick="tabAlmashtir('kassir_sotuv',this)">
+      <i class="fas fa-cash-register"></i> Kassir sotuvi
+    </button>`;
+  kassirSotuvHisoboti();
 }
 
 function tabAlmashtir(tur, btn) {
   document.querySelectorAll('.hisobot-tabs .tab-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   switch(tur) {
-    case 'kunlik':      kunlikHisobot();         break;
-    case 'oylik':       oylikHisobot();          break;
-    case 'sotuvlar':    sotuvlarTarixi();        break;
-    case 'foyda':       foydaHisoboti();         break;
-    case 'qoldiq':      qoldiqHisoboti();        break;
-    case 'qaytarishlar': qaytarishlarHisoboti(); break;
-    case 'xarajatlar':  xarajatlarSahifasi();   break;
+    case 'kunlik':        kunlikHisobot();          break;
+    case 'oylik':         oylikHisobot();           break;
+    case 'foyda':         foydaHisoboti();          break;
+    case 'xarajatlar':    xarajatlarSahifasi();     break;
+    case 'sotuvlar':      sotuvlarTarixi();         break;
+    case 'qaytarishlar':  qaytarishlarHisoboti();   break;
+    case 'qoldiq':        qoldiqHisoboti();         break;
+    case 'top_mahsulot':  topMahsulotHisoboti();    break;
+    case 'kam_qolgan':    kamQolganHisoboti();       break;
+    case 'kirim_tarixi':  kirimTarixiHisoboti();    break;
+    case 'aylanma':       aylanmaHisoboti();        break;
+    case 'top_xaridorlar': topXaridorlarHisoboti(); break;
+    case 'aktiv_mijozlar': aktivMijozlarHisoboti(); break;
+    case 'yangi_mijozlar': yangiMijozlarHisoboti(); break;
+    case 'kassir_sotuv':  kassirSotuvHisoboti();    break;
   }
 }
 
@@ -735,4 +792,449 @@ function xarajatOchir(id) {
     try{await apiDelete('/xarajatlar/'+id);toast('O\'chirildi!');xarajatlarYukla();}
     catch(e){toast(e.message,'error');}
   });
+}
+
+
+
+// ===== OMBOR: TOP MAHSULOT =====
+async function topMahsulotHisoboti() {
+  const bugun=bugunSana(), oyBoshi=bugun.slice(0,8)+'01';
+  document.getElementById('hisobotKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-trophy" style="color:#f59e0b"></i> Eng ko'p sotiladigan mahsulotlar</h3>
+        <div class="filter-bar">
+          <input type="date" id="tmBosh" value="${oyBoshi}" class="search-input" onchange="topMahsulotYukla()">
+          <input type="date" id="tmTugash" value="${bugun}" class="search-input" onchange="topMahsulotYukla()">
+          <button class="btn btn-success btn-sm" onclick="topMahsulotExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+        </div>
+      </div>
+      <div class="card-body" id="tmKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>`;
+  await topMahsulotYukla();
+}
+
+async function topMahsulotYukla() {
+  const b=document.getElementById('tmBosh')?.value, t=document.getElementById('tmTugash')?.value;
+  try {
+    const rows = await apiGet(`/hisobot/ombor/top_mahsulot?boshlanish=${b}&tugash=${t}`);
+    window._tmData = rows;
+    const div = document.getElementById('tmKontent');
+    if (!rows.length) { div.innerHTML='<div class="empty-state"><i class="fas fa-box-open"></i><p>Ma\'lumot yo\'q</p></div>'; return; }
+    div.innerHTML = `
+      <div class="table-wrapper"><table>
+        <thead><tr><th>#</th><th>Mahsulot</th><th>Birlik</th><th>Sotilgan miqdor</th>
+          <th>Sotuv soni</th><th>Jami summa</th><th>Qoldiq</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`
+          <tr>
+            <td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td>
+            <td><b>${r.nomi}</b></td>
+            <td>${r.birlik}</td>
+            <td><b>${r.sotilgan_miqdor}</b></td>
+            <td>${r.sotuv_soni}</td>
+            <td><b style="color:#10b981">${formatSum(r.sotilgan_summa)}</b></td>
+            <td style="color:${r.qoldiq<=0?'#ef4444':r.qoldiq<=5?'#f59e0b':'#10b981'}">${r.qoldiq}</td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      <div style="padding:8px;font-size:13px;color:#64748b">
+        Jami: <b>${formatSum(rows.reduce((s,r)=>s+r.sotilgan_summa,0))}</b>
+      </div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function topMahsulotExcel() {
+  const rows = window._tmData || [];
+  if (!rows.length) { toast('Ma\'lumot yo\'q!','warning'); return; }
+  let csv = '\uFEFFTop mahsulotlar\n\n#,Mahsulot,Birlik,Sotilgan miqdor,Sotuv soni,Jami summa,Qoldiq\n';
+  rows.forEach((r,i) => { csv += `${i+1},"${r.nomi}",${r.birlik},${r.sotilgan_miqdor},${r.sotuv_soni},${r.sotilgan_summa},${r.qoldiq}\n`; });
+  excelYukla(csv, `top_mahsulot.csv`);
+}
+
+
+// ===== OMBOR: KAM QOLGAN =====
+async function kamQolganHisoboti() {
+  document.getElementById('hisobotKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-exclamation-triangle" style="color:#ef4444"></i> Kam qolgan mahsulotlar</h3>
+        <button class="btn btn-success btn-sm" onclick="kamQolganExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+      </div>
+      <div class="card-body" id="kamKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>`;
+  try {
+    const rows = await apiGet('/hisobot/ombor/kam');
+    window._kamData = rows;
+    const tugagan = rows.filter(r=>r.holat==='tugagan');
+    const kam = rows.filter(r=>r.holat==='kam');
+    const div = document.getElementById('kamKontent');
+    if (!rows.length) { div.innerHTML='<div class="empty-state"><i class="fas fa-check-circle" style="color:#10b981"></i><p>Hamma mahsulot yetarli ✅</p></div>'; return; }
+    div.innerHTML = `
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+          <div class="stat-info"><h3 style="color:#ef4444">${tugagan.length}</h3><p>Tugagan</p></div></div>
+        <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="stat-info"><h3 style="color:#f59e0b">${kam.length}</h3><p>Kam qolgan</p></div></div>
+      </div>
+      <div class="table-wrapper"><table>
+        <thead><tr><th>#</th><th>Mahsulot</th><th>Kategoriya</th><th>Mavjud</th>
+          <th>Minimal</th><th>Sotish narxi</th><th>Holat</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`
+          <tr style="background:${r.holat==='tugagan'?'#fff1f2':'#fffbeb'}">
+            <td>${i+1}</td>
+            <td><b>${r.nomi}</b></td>
+            <td>${r.kategoriya_nomi||'-'}</td>
+            <td><b style="color:${r.miqdor<=0?'#ef4444':'#f59e0b'}">${r.miqdor} ${r.birlik}</b></td>
+            <td>${r.min_miqdor} ${r.birlik}</td>
+            <td>${formatSum(r.sotish_narxi)}</td>
+            <td>${r.holat==='tugagan'
+              ?'<span class="badge badge-danger">❌ Tugagan</span>'
+              :'<span class="badge badge-warning">⚠ Kam</span>'}</td>
+          </tr>`).join('')}
+        </tbody></table></div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function kamQolganExcel() {
+  const rows = window._kamData || [];
+  if (!rows.length) { toast('Ma\'lumot yo\'q!','warning'); return; }
+  let csv = '\uFEFFKam qolgan mahsulotlar\n\n#,Mahsulot,Kategoriya,Birlik,Mavjud,Minimal,Sotish narxi,Holat\n';
+  rows.forEach((r,i) => { csv += `${i+1},"${r.nomi}","${r.kategoriya_nomi||'-'}",${r.birlik},${r.miqdor},${r.min_miqdor},${r.sotish_narxi},${r.holat}\n`; });
+  excelYukla(csv, `kam_qolgan.csv`);
+}
+
+
+// ===== OMBOR: KIRIM TARIXI =====
+async function kirimTarixiHisoboti() {
+  const bugun=bugunSana(), oyBoshi=bugun.slice(0,8)+'01';
+  document.getElementById('hisobotKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-truck" style="color:#2563eb"></i> Kirim tarixi</h3>
+        <div class="filter-bar">
+          <input type="date" id="ktBosh" value="${oyBoshi}" class="search-input" onchange="kirimTarixiYukla()">
+          <input type="date" id="ktTugash" value="${bugun}" class="search-input" onchange="kirimTarixiYukla()">
+          <button class="btn btn-success btn-sm" onclick="kirimExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+        </div>
+      </div>
+      <div class="card-body" id="ktKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>`;
+  await kirimTarixiYukla();
+}
+
+async function kirimTarixiYukla() {
+  const b=document.getElementById('ktBosh')?.value, t=document.getElementById('ktTugash')?.value;
+  try {
+    const data = await apiGet(`/hisobot/ombor/kirim?boshlanish=${b}&tugash=${t}`);
+    window._ktData = data;
+    const rows = data.rows || [];
+    const div = document.getElementById('ktKontent');
+    if (!rows.length) { div.innerHTML='<div class="empty-state"><i class="fas fa-truck"></i><p>Bu davrda kirim yo\'q</p></div>'; return; }
+    div.innerHTML = `
+      <div style="background:#eff6ff;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:14px">
+        Jami kirim qiymati: <b>${formatSum(data.jami_qiymat)}</b>
+      </div>
+      <div class="table-wrapper"><table>
+        <thead><tr><th>#</th><th>Mahsulot</th><th>Miqdor</th><th>Kelish narxi</th>
+          <th>Qiymat</th><th>Yetkazuvchi</th><th>Sana</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`
+          <tr>
+            <td>${i+1}</td>
+            <td><b>${r.nomi}</b></td>
+            <td>${r.miqdor} ${r.birlik}</td>
+            <td>${formatSum(r.kelish_narxi)}</td>
+            <td><b>${formatSum(r.miqdor*(r.kelish_narxi||0))}</b></td>
+            <td>${r.yetkazuvchi||'-'}</td>
+            <td style="font-size:12px;color:#64748b">${formatSana(r.sana)}</td>
+          </tr>`).join('')}
+        </tbody></table></div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function kirimExcel() {
+  const rows = (window._ktData?.rows) || [];
+  if (!rows.length) { toast('Ma\'lumot yo\'q!','warning'); return; }
+  let csv = '\uFEFFKirim tarixi\n\n#,Mahsulot,Miqdor,Birlik,Kelish narxi,Yetkazuvchi,Sana\n';
+  rows.forEach((r,i) => { csv += `${i+1},"${r.nomi}",${r.miqdor},${r.birlik},${r.kelish_narxi},"${r.yetkazuvchi||'-'}","${r.sana}"\n`; });
+  excelYukla(csv, `kirim_tarixi.csv`);
+}
+
+
+// ===== OMBOR: TOVAR AYLANMASI =====
+async function aylanmaHisoboti() {
+  const bugun=bugunSana(), oyBoshi=bugun.slice(0,8)+'01';
+  document.getElementById('hisobotKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-sync-alt" style="color:#8b5cf6"></i> Tovar aylanmasi</h3>
+        <div class="filter-bar">
+          <input type="date" id="ayBosh" value="${oyBoshi}" class="search-input" onchange="aylanmaYukla()">
+          <input type="date" id="ayTugash" value="${bugun}" class="search-input" onchange="aylanmaYukla()">
+          <button class="btn btn-success btn-sm" onclick="aylanmaExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+        </div>
+      </div>
+      <div class="card-body" id="ayKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>`;
+  await aylanmaYukla();
+}
+
+async function aylanmaYukla() {
+  const b=document.getElementById('ayBosh')?.value, t=document.getElementById('ayTugash')?.value;
+  try {
+    const rows = await apiGet(`/hisobot/ombor/aylanma?boshlanish=${b}&tugash=${t}`);
+    window._ayData = rows;
+    const div = document.getElementById('ayKontent');
+    if (!rows.length) { div.innerHTML='<div class="empty-state"><i class="fas fa-sync"></i><p>Bu davrda harakat yo\'q</p></div>'; return; }
+    div.innerHTML = `
+      <div class="table-wrapper"><table>
+        <thead><tr><th>#</th><th>Mahsulot</th><th>Kirim miqdori</th><th>Chiqim miqdori</th>
+          <th>Kirim qiymati</th><th>Chiqim qiymati</th><th>Hozir qoldiq</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`
+          <tr>
+            <td>${i+1}</td><td><b>${r.nomi}</b></td>
+            <td style="color:#2563eb">${r.kirim_miqdor} ${r.birlik}</td>
+            <td style="color:#ef4444">${r.chiqim_miqdor} ${r.birlik}</td>
+            <td style="color:#2563eb">${formatSum(r.jami_kirim)}</td>
+            <td style="color:#ef4444">${formatSum(r.jami_chiqim)}</td>
+            <td><b style="color:${r.hozir_qoldiq<=0?'#ef4444':'#10b981'}">${r.hozir_qoldiq} ${r.birlik}</b></td>
+          </tr>`).join('')}
+        </tbody></table></div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function aylanmaExcel() {
+  const rows = window._ayData || [];
+  if (!rows.length) { toast('Ma\'lumot yo\'q!','warning'); return; }
+  let csv = '\uFEFFTovar aylanmasi\n\n#,Mahsulot,Birlik,Kirim miqdori,Chiqim miqdori,Kirim qiymati,Chiqim qiymati,Qoldiq\n';
+  rows.forEach((r,i) => { csv += `${i+1},"${r.nomi}",${r.birlik},${r.kirim_miqdor},${r.chiqim_miqdor},${r.jami_kirim},${r.jami_chiqim},${r.hozir_qoldiq}\n`; });
+  excelYukla(csv, `aylanma.csv`);
+}
+
+
+// ===== MIJOZLAR: TOP XARIDORLAR =====
+async function topXaridorlarHisoboti() {
+  const bugun=bugunSana(), oyBoshi=bugun.slice(0,8)+'01';
+  document.getElementById('hisobotKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-crown" style="color:#f59e0b"></i> Top xaridorlar</h3>
+        <div class="filter-bar">
+          <input type="date" id="txBosh" value="${oyBoshi}" class="search-input" onchange="topXaridorlarYukla()">
+          <input type="date" id="txTugash" value="${bugun}" class="search-input" onchange="topXaridorlarYukla()">
+          <button class="btn btn-success btn-sm" onclick="topXaridorExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+        </div>
+      </div>
+      <div class="card-body" id="txKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>`;
+  await topXaridorlarYukla();
+}
+
+async function topXaridorlarYukla() {
+  const b=document.getElementById('txBosh')?.value, t=document.getElementById('txTugash')?.value;
+  try {
+    const rows = await apiGet(`/hisobot/mijozlar/top?boshlanish=${b}&tugash=${t}`);
+    window._txData = rows;
+    const div = document.getElementById('txKontent');
+    if (!rows.length) { div.innerHTML='<div class="empty-state"><i class="fas fa-users"></i><p>Bu davrda xarid yo\'q</p></div>'; return; }
+    div.innerHTML = `
+      <div class="table-wrapper"><table>
+        <thead><tr><th>#</th><th>Mijoz</th><th>Telefon</th><th>Xarid soni</th>
+          <th>Jami xarid</th><th>Qarz</th><th>Oxirgi sotuv</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`
+          <tr>
+            <td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td>
+            <td><b>${r.ismi}</b></td>
+            <td>${r.telefon||'-'}</td>
+            <td><b>${r.sotuv_soni}</b></td>
+            <td><b style="color:#10b981">${formatSum(r.jami_xarid)}</b></td>
+            <td style="color:${r.qarz>0?'#ef4444':'#10b981'}">${r.qarz>0?formatSum(r.qarz):'0'}</td>
+            <td style="font-size:12px;color:#64748b">${formatSana(r.oxirgi_sotuv)}</td>
+          </tr>`).join('')}
+        </tbody></table></div>
+      <div style="padding:8px;font-size:13px;color:#64748b">
+        Jami: <b>${formatSum(rows.reduce((s,r)=>s+r.jami_xarid,0))}</b>
+      </div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function topXaridorExcel() {
+  const rows = window._txData || [];
+  if (!rows.length) { toast('Ma\'lumot yo\'q!','warning'); return; }
+  let csv = '\uFEFFTop xaridorlar\n\n#,Mijoz,Telefon,Xarid soni,Jami xarid,Qarz\n';
+  rows.forEach((r,i) => { csv += `${i+1},"${r.ismi}","${r.telefon||'-'}",${r.sotuv_soni},${r.jami_xarid},${r.qarz||0}\n`; });
+  excelYukla(csv, `top_xaridorlar.csv`);
+}
+
+
+// ===== MIJOZLAR: AKTIV MIJOZLAR =====
+async function aktivMijozlarHisoboti() {
+  document.getElementById('hisobotKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-user-check" style="color:#10b981"></i> Aktiv mijozlar (2+ marta xarid)</h3>
+        <button class="btn btn-success btn-sm" onclick="aktivMijozExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+      </div>
+      <div class="card-body" id="amKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>`;
+  try {
+    const rows = await apiGet('/hisobot/mijozlar/aktiv');
+    window._amData = rows;
+    const div = document.getElementById('amKontent');
+    if (!rows.length) { div.innerHTML='<div class="empty-state"><i class="fas fa-users"></i><p>Aktiv mijoz yo\'q</p></div>'; return; }
+    div.innerHTML = `
+      <div style="background:#f0fdf4;padding:10px 14px;border-radius:8px;margin-bottom:12px">
+        Jami aktiv mijozlar: <b>${rows.length}</b> ta |
+        Jami xarid: <b>${formatSum(rows.reduce((s,r)=>s+r.jami_xarid,0))}</b>
+      </div>
+      <div class="table-wrapper"><table>
+        <thead><tr><th>#</th><th>Mijoz</th><th>Telefon</th><th>Jami xarid soni</th>
+          <th>Jami summa</th><th>Birinchi xarid</th><th>Oxirgi xarid</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`
+          <tr>
+            <td>${i+1}</td>
+            <td><b>${r.ismi}</b></td>
+            <td>${r.telefon||'-'}</td>
+            <td><span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:700">${r.sotuv_soni}</span></td>
+            <td><b style="color:#10b981">${formatSum(r.jami_xarid)}</b></td>
+            <td style="font-size:12px;color:#64748b">${formatSana(r.birinchi_sotuv)}</td>
+            <td style="font-size:12px;color:#64748b">${formatSana(r.oxirgi_sotuv)}</td>
+          </tr>`).join('')}
+        </tbody></table></div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function aktivMijozExcel() {
+  const rows = window._amData || [];
+  if (!rows.length) { toast('Ma\'lumot yo\'q!','warning'); return; }
+  let csv = '\uFEFFAktiv mijozlar\n\n#,Mijoz,Telefon,Xarid soni,Jami summa\n';
+  rows.forEach((r,i) => { csv += `${i+1},"${r.ismi}","${r.telefon||'-'}",${r.sotuv_soni},${r.jami_xarid}\n`; });
+  excelYukla(csv, `aktiv_mijozlar.csv`);
+}
+
+// ===== MIJOZLAR: YANGI MIJOZLAR =====
+async function yangiMijozlarHisoboti() {
+  const bugun=bugunSana(), oyBoshi=bugun.slice(0,8)+'01';
+  document.getElementById('hisobotKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-user-plus" style="color:#2563eb"></i> Yangi mijozlar</h3>
+        <div class="filter-bar">
+          <input type="date" id="ymBosh" value="${oyBoshi}" class="search-input" onchange="yangiMijozYukla()">
+          <input type="date" id="ymTugash" value="${bugun}" class="search-input" onchange="yangiMijozYukla()">
+          <button class="btn btn-success btn-sm" onclick="yangiMijozExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+        </div>
+      </div>
+      <div class="card-body" id="ymKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>`;
+  await yangiMijozYukla();
+}
+
+async function yangiMijozYukla() {
+  const b=document.getElementById('ymBosh')?.value, t=document.getElementById('ymTugash')?.value;
+  try {
+    const rows = await apiGet(`/hisobot/mijozlar/yangi?boshlanish=${b}&tugash=${t}`);
+    window._ymData = rows;
+    const div = document.getElementById('ymKontent');
+    if (!rows.length) { div.innerHTML='<div class="empty-state"><i class="fas fa-user-plus"></i><p>Bu davrda yangi mijoz yo\'q</p></div>'; return; }
+    div.innerHTML = `
+      <div style="background:#eff6ff;padding:10px 14px;border-radius:8px;margin-bottom:12px">
+        ${b} — ${t} davrida <b>${rows.length}</b> ta yangi mijoz
+      </div>
+      <div class="table-wrapper"><table>
+        <thead><tr><th>#</th><th>Ismi</th><th>Telefon</th><th>Manzil</th>
+          <th>Xarid soni</th><th>Jami xarid</th><th>Qo'shilgan</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`
+          <tr>
+            <td>${i+1}</td>
+            <td><b>${r.ism} ${r.familiya||''}</b></td>
+            <td>${r.telefon||'-'}</td>
+            <td style="font-size:12px">${r.manzil||'-'}</td>
+            <td>${r.sotuv_soni||0}</td>
+            <td>${formatSum(r.jami_xarid||0)}</td>
+            <td style="font-size:12px;color:#64748b">${formatSana(r.yaratilgan)}</td>
+          </tr>`).join('')}
+        </tbody></table></div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function yangiMijozExcel() {
+  const rows = window._ymData || [];
+  if (!rows.length) { toast('Ma\'lumot yo\'q!','warning'); return; }
+  let csv = '\uFEFFYangi mijozlar\n\n#,Ismi,Telefon,Manzil,Xarid soni,Jami xarid\n';
+  rows.forEach((r,i) => { csv += `${i+1},"${r.ism} ${r.familiya||''}","${r.telefon||'-'}","${r.manzil||'-'}",${r.sotuv_soni||0},${r.jami_xarid||0}\n`; });
+  excelYukla(csv, `yangi_mijozlar.csv`);
+}
+
+
+// ===== XODIMLAR: KASSIR SOTUV HISOBOTI =====
+async function kassirSotuvHisoboti() {
+  const bugun=bugunSana(), oyBoshi=bugun.slice(0,8)+'01';
+  document.getElementById('hisobotKontent').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-cash-register" style="color:#f59e0b"></i> Kassir sotuv hisoboti</h3>
+        <div class="filter-bar">
+          <input type="date" id="ksBosh" value="${oyBoshi}" class="search-input" onchange="kassirSotuvYukla()">
+          <input type="date" id="ksTugash" value="${bugun}" class="search-input" onchange="kassirSotuvYukla()">
+          <button class="btn btn-success btn-sm" onclick="kassirExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+        </div>
+      </div>
+      <div class="card-body" id="ksKontent"><div style="text-align:center"><i class="fas fa-spinner fa-spin fa-2x"></i></div></div>
+    </div>`;
+  await kassirSotuvYukla();
+}
+
+async function kassirSotuvYukla() {
+  const b=document.getElementById('ksBosh')?.value, t=document.getElementById('ksTugash')?.value;
+  try {
+    const rows = await apiGet(`/hisobot/xodimlar/sotuv?boshlanish=${b}&tugash=${t}`);
+    window._ksData = rows;
+    const div = document.getElementById('ksKontent');
+    if (!rows.length) { div.innerHTML='<div class="empty-state"><i class="fas fa-id-badge"></i><p>Ma\'lumot yo\'q</p></div>'; return; }
+    const jamiSotuvlar = rows.reduce((s,r)=>s+r.sotuv_soni,0);
+    const jamiSumma = rows.reduce((s,r)=>s+r.jami_summa,0);
+    div.innerHTML = `
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-users"></i></div>
+          <div class="stat-info"><h3>${rows.length}</h3><p>Xodimlar</p></div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-shopping-cart"></i></div>
+          <div class="stat-info"><h3>${jamiSotuvlar}</h3><p>Jami sotuvlar</p></div></div>
+        <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-coins"></i></div>
+          <div class="stat-info"><h3>${formatSum(jamiSumma)}</h3><p>Jami summa</p></div></div>
+      </div>
+      <div class="table-wrapper"><table>
+        <thead><tr>
+          <th>#</th><th>Xodim</th><th>Rol</th><th>Sotuvlar soni</th>
+          <th>Jami summa</th><th>O'rtacha sotuv</th><th>Ish kunlari</th><th>Oxirgi sotuv</th>
+        </tr></thead>
+        <tbody>${rows.map((r,i)=>`
+          <tr>
+            <td>${i<3&&r.sotuv_soni>0?['🥇','🥈','🥉'][i]:i+1}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:30px;height:30px;border-radius:50%;
+                  background:${r.rol==='admin'?'#fef3c7':'#dbeafe'};
+                  display:flex;align-items:center;justify-content:center;
+                  color:${r.rol==='admin'?'#d97706':'#2563eb'};font-weight:700;font-size:12px">
+                  ${r.ismi[0].toUpperCase()}
+                </div>
+                <b>${r.ismi}</b>
+              </div>
+            </td>
+            <td><span class="badge ${r.rol==='admin'?'badge-warning':'badge-info'}">${r.rol==='admin'?'👑 Admin':'💼 Kassir'}</span></td>
+            <td><b style="color:${r.sotuv_soni>0?'#2563eb':'#94a3b8'}">${r.sotuv_soni}</b></td>
+            <td><b style="color:#10b981">${formatSum(r.jami_summa)}</b></td>
+            <td>${formatSum(Math.round(r.ort_sotuv||0))}</td>
+            <td>${r.ish_kunlari||0} kun</td>
+            <td style="font-size:12px;color:#64748b">${r.oxirgi_sotuv?formatSana(r.oxirgi_sotuv):'-'}</td>
+          </tr>`).join('')}
+        </tbody></table></div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function kassirExcel() {
+  const rows = window._ksData || [];
+  if (!rows.length) { toast('Ma\'lumot yo\'q!','warning'); return; }
+  let csv = '\uFEFFKassir sotuv hisoboti\n\n#,Xodim,Rol,Sotuvlar soni,Jami summa,Ort summa,Ish kunlari\n';
+  rows.forEach((r,i) => { csv += `${i+1},"${r.ismi}",${r.rol},${r.sotuv_soni},${r.jami_summa},${Math.round(r.ort_sotuv||0)},${r.ish_kunlari||0}\n`; });
+  excelYukla(csv, `kassir_sotuv.csv`);
 }
