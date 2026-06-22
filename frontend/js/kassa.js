@@ -206,11 +206,13 @@ async function kassaYukla() {
         background:white;border-bottom:1px solid #e2e8f0;flex-wrap:wrap" id="chekTablar">
       </div>
 
-      <!-- ASOSIY KONTENT -->
-      <div class="kassa-wrapper" style="flex:1;overflow:hidden">
-        <div class="kassa-mahsulotlar">
+      <!-- 3 USTUNLI LAYOUT -->
+      <div style="flex:1;overflow:hidden;display:grid;grid-template-columns:1fr 340px 300px;gap:0">
+
+        <!-- CHAP: MAHSULOTLAR RO'YXATI -->
+        <div style="overflow-y:auto;padding:12px;border-right:1px solid #e2e8f0;background:#f8fafc">
           <div class="card" style="margin-bottom:12px">
-            <div class="card-body" style="padding:12px">
+            <div class="card-body" style="padding:10px">
               <div class="filter-bar">
                 <input type="text" id="kassaQidiruv" class="search-input"
                   placeholder="🔍 Mahsulot qidirish..." oninput="kassaMahsulotFilter()" style="flex:1">
@@ -225,63 +227,99 @@ async function kassaYukla() {
           </div>
           <div id="kassaMahsulotGrid" class="${soz.savdoKorinish==='jadval'?'':'mahsulot-grid'}"></div>
         </div>
-        <div class="kassa-chek">
-          <div class="chek-header">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <h3 id="chekSarlavha" style="font-size:14px"><i class="fas fa-receipt"></i> Joriy chek</h3>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-warning btn-sm" onclick="qaytarishModal()" title="Qaytarish">
-                  <i class="fas fa-undo"></i>
-                </button>
-                <button class="btn btn-secondary btn-sm" onclick="chekTozala()">
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
+
+        <!-- O'RTA: CHEK RO'YXATI -->
+        <div style="display:flex;flex-direction:column;border-right:1px solid #e2e8f0;background:white;overflow:hidden">
+          <!-- Sarlavha -->
+          <div style="padding:10px 14px;border-bottom:1px solid #e2e8f0;
+            display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+            <h3 id="chekSarlavha" style="font-size:14px;font-weight:700">
+              <i class="fas fa-receipt" style="color:#2563eb"></i> Joriy chek
+            </h3>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-warning btn-sm" onclick="qaytarishModal()" title="Qaytarish">
+                <i class="fas fa-undo"></i>
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="chekTozala()" title="Tozalash">
+                <i class="fas fa-times"></i>
+              </button>
             </div>
           </div>
-          <div class="chek-items" id="chekItems">
+          <!-- Mahsulotlar ro'yxati -->
+          <div class="chek-items" id="chekItems" style="flex:1;overflow-y:auto">
             <div class="empty-state" style="padding:30px">
               <i class="fas fa-shopping-cart"></i><p>Mahsulot tanlang</p>
             </div>
           </div>
-          <div class="chek-footer">
-            <div style="margin-bottom:10px;border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <span style="font-size:13px;font-weight:600;color:#475569"><i class="fas fa-user"></i> Mijoz</span>
-                <button class="btn btn-secondary btn-sm" onclick="mijozTanlash()">
-                  <i class="fas fa-search"></i> Tanlash
-                </button>
-              </div>
-              <div id="tanlangan_mijoz_blok">
-                <span style="color:#94a3b8;font-size:13px">— Mijozsiz sotuv —</span>
-              </div>
+          <!-- Jami -->
+          <div style="padding:10px 14px;border-top:1px solid #e2e8f0;background:#f8fafc;flex-shrink:0">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+              <span style="color:#64748b">Jami:</span>
+              <span id="chekJami" style="font-weight:600">0 so'm</span>
             </div>
-            <div class="chek-jami-qator"><span>Jami:</span><span id="chekJami">0 so'm</span></div>
-            <div class="chek-jami-qator">
-              <span>Chegirma:</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:4px">
+              <span style="color:#64748b">Chegirma:</span>
               <input type="number" id="chegirmaInput" min="0" placeholder="0"
-                style="width:100px;text-align:right;border:1px solid #e2e8f0;border-radius:4px;padding:4px"
+                style="width:100px;text-align:right;border:1px solid #e2e8f0;
+                border-radius:4px;padding:3px 6px;font-size:13px"
                 oninput="chekHisoba();joriyChekSaqla()">
             </div>
-            <div class="chek-jami-qator katta"><span>To'lash:</span><span id="chekYakuniy">0 so'm</span></div>
-            <div style="margin:8px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-              <div style="background:#f8fafc;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:12px;font-weight:600;color:#475569"><i class="fas fa-credit-card"></i> To'lov</span>
-                <button class="btn btn-secondary btn-sm" onclick="tolovQatorQosh()" style="font-size:10px;padding:2px 6px">
-                  <i class="fas fa-plus"></i> Qo'sh
-                </button>
-              </div>
-              <div id="tolovQatorlar" style="padding:8px"></div>
-              <div style="padding:4px 12px;background:#f0fdf4;display:flex;justify-content:space-between;font-size:12px">
-                <span style="color:#64748b">Qolgan:</span>
-                <span id="tolovQolgan" style="font-weight:700;color:#ef4444">0 so'm</span>
-              </div>
+            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;
+              color:#2563eb;padding-top:6px;border-top:1px solid #e2e8f0">
+              <span>To'lash:</span>
+              <span id="chekYakuniy">0 so'm</span>
             </div>
-            <button class="btn btn-success" style="width:100%;padding:11px;font-size:14px" onclick="sotuvYakunla()">
+          </div>
+        </div>
+
+        <!-- O'NG: MIJOZ + TO'LOV + YAKUNLASH -->
+        <div style="display:flex;flex-direction:column;background:white;overflow-y:auto">
+
+          <!-- MIJOZ -->
+          <div style="padding:12px;border-bottom:1px solid #e2e8f0;flex-shrink:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:13px;font-weight:600;color:#475569">
+                <i class="fas fa-user" style="color:#2563eb"></i> Mijoz
+              </span>
+              <button class="btn btn-secondary btn-sm" onclick="mijozTanlash()">
+                <i class="fas fa-search"></i> Tanlash
+              </button>
+            </div>
+            <div id="tanlangan_mijoz_blok">
+              <span style="color:#94a3b8;font-size:13px">— Mijozsiz sotuv —</span>
+            </div>
+          </div>
+
+          <!-- TO'LOV USULLARI -->
+          <div style="padding:12px;border-bottom:1px solid #e2e8f0;flex:1">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:13px;font-weight:600;color:#475569">
+                <i class="fas fa-credit-card" style="color:#2563eb"></i> To'lov usuli
+              </span>
+              <button class="btn btn-secondary btn-sm" onclick="tolovQatorQosh()"
+                style="font-size:11px;padding:3px 8px">
+                <i class="fas fa-plus"></i> Qo'sh
+              </button>
+            </div>
+            <div id="tolovQatorlar"></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;
+              padding:6px 10px;background:#f0fdf4;border-radius:6px;margin-top:6px">
+              <span style="color:#64748b">Qolgan:</span>
+              <span id="tolovQolgan" style="font-weight:700;color:#ef4444">0 so'm</span>
+            </div>
+          </div>
+
+          <!-- YAKUNLASH TUGMASI -->
+          <div style="padding:12px;flex-shrink:0">
+            <button class="btn btn-success"
+              style="width:100%;padding:14px;font-size:15px;font-weight:700;
+              border-radius:10px;letter-spacing:0.3px"
+              onclick="sotuvYakunla()">
               <i class="fas fa-check-circle"></i> Sotishni tasdiqlash
             </button>
           </div>
         </div>
+
       </div>
     </div>`;
 
