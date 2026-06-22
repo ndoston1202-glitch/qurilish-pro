@@ -332,18 +332,20 @@ def rows_to_list(rows):
 def row_to_dict(row):
     return dict(row) if row else None
 
-def telegram_yuborish(token, chat_id, matn):
+def telegram_yuborish(token, chat_id, matn, reply_markup=None):
     """Telegram API ga xabar yuborish"""
     import urllib.request
     if not token or not chat_id:
         return {'xato': 'Token yoki Chat ID kiritilmagan!'}
     try:
-        # Markdown belgilarini escape qilamiz
         matn_clean = matn.replace('*','').replace('_','').replace('`','').replace('[','').replace(']','')
-        data = json.dumps({
+        payload = {
             'chat_id': str(chat_id).strip(),
             'text': matn_clean,
-        }).encode('utf-8')
+        }
+        if reply_markup:
+            payload['reply_markup'] = reply_markup
+        data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(
             f'https://api.telegram.org/bot{token.strip()}/sendMessage',
             data=data,
@@ -356,6 +358,305 @@ def telegram_yuborish(token, chat_id, matn):
             return {'xato': result.get('description', 'Noma\'lum xato')}
     except Exception as e:
         return {'xato': str(e)}
+
+
+def telegram_callback_javob(token, callback_query_id):
+    """Callback query ga javob (loading animatsiyasini to'xtatish)"""
+    import urllib.request
+    try:
+        data = json.dumps({'callback_query_id': callback_query_id}).encode('utf-8')
+        req = urllib.request.Request(
+            f'https://api.telegram.org/bot{token}/answerCallbackQuery',
+            data=data, headers={'Content-Type': 'application/json'}
+        )
+        urllib.request.urlopen(req, timeout=10)
+    except: pass
+
+
+def asosiy_menyu_keyboard():
+    """Asosiy menyu tugmalari"""
+    return {
+        'inline_keyboard': [
+            [
+                {'text': '📊 Moliyaviy hisobot', 'callback_data': 'moliya'},
+                {'text': '📦 Ombor hisoboti',    'callback_data': 'ombor'},
+            ],
+            [
+                {'text': '📋 Qarzlar',    'callback_data': 'qarzlar'},
+                {'text': '🕐 Bugun',      'callback_data': 'bugun'},
+            ]
+        ]
+    }
+
+
+def moliya_hisoboti_matn():
+    """Kassa moliyaviy holati"""
+    try:
+        conn = get_db()
+        bugun = datetime.now().strftime('%Y-%m-%d')
+        oy_boshi = datetime.now().strftime('%Y-%m-01')
+
+        # Bugungi
+        b = conn.execute(
+            "SELECT COUNT(*) as son, COALESCE(SUM(jami_summa),0) as jami FROM sotuvlar WHERE date(sana)=?",
+            (bugun,)).fetchone()
+        # Oylik
+        o = conn.execute(
+            "SELECT COUNT(*) as son, COALESCE(SUM(jami_summa),0) as jami FROM sotuvlar WHERE date(sana)>=?",
+            (oy_boshi,)).fetchone()
+        # Xarajat (bugun)
+        xb = conn.execute(
+            "SELECT COALESCE(SUM(summa),0) as jami FROM xarajatlar WHERE date(sana)=?",
+            (bugun,)).fetchone()
+        # Xarajat (oy)
+        xo = conn.execute(
+            "SELECT COALESCE(SUM(summa),0) as jami FROM xarajatlar WHERE date(sana)>=?",
+            (oy_boshi,)).fetchone()
+        # Jami qarz
+        qarz = conn.execute(
+            "SELECT COALESCE(SUM(qoldi),0) as jami, COUNT(*) as son FROM qarz_tarixi WHERE holat='ochiq'").fetchone()
+        # Kechikkan
+        kechikkan = conn.execute(
+            "SELECT COUNT(*) as son FROM qarz_tarixi WHERE holat='ochiq' AND muddat IS NOT NULL AND muddat<?",
+            (bugun,)).fetchone()
+
+        def fmt(n): return f"{int(n):,}".replace(',', ' ')
+
+        conn.close()
+        sana = datetime.now().strftime('%d.%m.%Y %H:%M')
+        return (
+            f"Moliyaviy hisobot\n"
+            f"{sana}\n"
+            f"========================\n"
+            f"BUGUN:\n"
+            f"  Sotuvlar: {b['son']} ta\n"
+            f"  Daromad:  {fmt(b['jami'])} som\n"
+            f"  Xarajat:  {fmt(xb['jami'])} som\n"
+            f"  Foyda:    {fmt(b['jami'] - xb['jami'])} som\n"
+            f"------------------------\n"
+            f"OY ({datetime.now().strftime('%B')}):\n"
+            f"  Sotuvlar: {o['son']} ta\n"
+            f"  Daromad:  {fmt(o['jami'])} som\n"
+            f"  Xarajat:  {fmt(xo['jami'])} som\n"
+            f"  Foyda:    {fmt(o['jami'] - xo['jami'])} som\n"
+            f"------------------------\n"
+            f"QARZLAR:\n"
+            f"  Ochiq: {qarz['son']} ta\n"
+            f"  Jami: {fmt(qarz['jami'])} som\n"
+            + (f"  Kechikkan: {kechikkan['son']} ta\n" if kechikkan['son'] > 0 else "")
+            + f"========================\n"
+            f"Qurilish Dokoni"
+        )
+    except Exception as e:
+        return f"Xato: {e}"
+
+
+def ombor_hisoboti_matn():
+    """Ombor qoldig'i holati"""
+    try:
+        conn = get_db()
+        # Jami mahsulotlar
+        jami = conn.execute(
+            "SELECT COUNT(*) as son, COALESCE(SUM(miqdor*kelish_narxi),0) as qiymat FROM mahsulotlar WHERE faol=1").fetchone()
+        # Kam qolganlar
+        kam = conn.execute(
+            "SELECT COUNT(*) as son FROM mahsulotlar WHERE faol=1 AND miqdor<=min_miqdor AND miqdor>0").fetchone()
+        # Tugaganlar
+        tugagan = conn.execute(
+            "SELECT COUNT(*) as son FROM mahsulotlar WHERE faol=1 AND miqdor<=0").fetchone()
+        # Top 5 kam qolgan
+        kam_list = conn.execute(
+            "SELECT nomi, miqdor, birlik, min_miqdor FROM mahsulotlar "
+            "WHERE faol=1 AND miqdor<=min_miqdor ORDER BY miqdor ASC LIMIT 5").fetchall()
+        # Bugun sotilgan
+        bugun = datetime.now().strftime('%Y-%m-%d')
+        bugun_sotuv = conn.execute("""
+            SELECT COUNT(DISTINCT st.mahsulot_id) as son, COALESCE(SUM(st.miqdor),0) as miqdor
+            FROM sotuv_tafsilotlari st JOIN sotuvlar s ON st.sotuv_id=s.id
+            WHERE date(s.sana)=?""", (bugun,)).fetchone()
+
+        def fmt(n): return f"{int(n):,}".replace(',', ' ')
+
+        conn.close()
+        sana = datetime.now().strftime('%d.%m.%Y %H:%M')
+
+        kam_matn = ''
+        if kam_list:
+            kam_matn = '\nKAM QOLGANLAR:\n'
+            for m in kam_list:
+                kam_matn += f"  {m['nomi']}: {m['miqdor']} {m['birlik']}\n"
+
+        return (
+            f"Ombor hisoboti\n"
+            f"{sana}\n"
+            f"========================\n"
+            f"Jami mahsulot: {jami['son']} tur\n"
+            f"Ombor qiymati: {fmt(jami['qiymat'])} som\n"
+            f"------------------------\n"
+            f"Kam qolgan: {kam['son']} ta\n"
+            f"Tugagan:    {tugagan['son']} ta\n"
+            f"Bugun sotildi: {bugun_sotuv['son']} tur\n"
+            + kam_matn
+            + f"========================\n"
+            f"Qurilish Dokoni"
+        )
+    except Exception as e:
+        return f"Xato: {e}"
+
+
+def qarzlar_matn():
+    """Ochiq qarzlar ro'yxati"""
+    try:
+        conn = get_db()
+        bugun = datetime.now().strftime('%Y-%m-%d')
+        qarzlar = conn.execute("""
+            SELECT q.*, m.ism||' '||COALESCE(m.familiya,'') as mijoz_ismi,
+            CASE WHEN q.muddat IS NULL THEN 'muddatsiz'
+                 WHEN q.muddat < ? THEN 'kechikkan'
+                 WHEN q.muddat = ? THEN 'bugun'
+                 ELSE 'normal' END as status
+            FROM qarz_tarixi q JOIN mijozlar m ON q.mijoz_id=m.id
+            WHERE q.holat='ochiq'
+            ORDER BY COALESCE(q.muddat,'9999') ASC LIMIT 20
+        """, (bugun, bugun)).fetchall()
+        conn.close()
+
+        def fmt(n): return f"{int(n):,}".replace(',', ' ')
+
+        if not qarzlar:
+            return "Ochiq qarz yoq ✅"
+
+        jami = sum(q['qoldi'] or 0 for q in qarzlar)
+        matn = (
+            f"Qarzlar ({len(qarzlar)} ta)\n"
+            f"Jami: {fmt(jami)} som\n"
+            f"========================\n"
+        )
+        for q in qarzlar:
+            status = '❗' if q['status']=='kechikkan' else '🔴' if q['status']=='bugun' else '📋'
+            muddat = q['muddat'] or 'muddatsiz'
+            matn += f"{status} {q['mijoz_ismi']}\n   {fmt(q['qoldi'])} som | {muddat}\n"
+        return matn
+    except Exception as e:
+        return f"Xato: {e}"
+
+
+def bugun_matn():
+    """Bugungi kun qisqa hisoboti"""
+    try:
+        conn = get_db()
+        bugun = datetime.now().strftime('%Y-%m-%d')
+        s = conn.execute(
+            "SELECT COUNT(*) as son, COALESCE(SUM(jami_summa),0) as jami FROM sotuvlar WHERE date(sana)=?",
+            (bugun,)).fetchone()
+        x = conn.execute(
+            "SELECT COALESCE(SUM(summa),0) as jami FROM xarajatlar WHERE date(sana)=?",
+            (bugun,)).fetchone()
+        q = conn.execute(
+            "SELECT COALESCE(SUM(jami_summa),0) as jami FROM qaytarishlar WHERE date(sana)=?",
+            (bugun,)).fetchone()
+        # Top 3
+        top = conn.execute("""
+            SELECT m.nomi, SUM(st.miqdor) as miqdor, SUM(st.jami) as jami, m.birlik
+            FROM sotuv_tafsilotlari st JOIN mahsulotlar m ON st.mahsulot_id=m.id
+            JOIN sotuvlar s ON st.sotuv_id=s.id
+            WHERE date(s.sana)=? GROUP BY m.id ORDER BY jami DESC LIMIT 3
+        """, (bugun,)).fetchall()
+        conn.close()
+
+        def fmt(n): return f"{int(n):,}".replace(',', ' ')
+        sana = datetime.now().strftime('%d.%m.%Y %H:%M')
+        top_matn = ''
+        if top:
+            top_matn = 'Top mahsulotlar:\n'
+            for i,t in enumerate(top,1):
+                top_matn += f"  {i}. {t['nomi']} - {fmt(t['jami'])} som\n"
+
+        return (
+            f"Bugun - {sana}\n"
+            f"========================\n"
+            f"Sotuvlar: {s['son']} ta\n"
+            f"Daromad:  {fmt(s['jami'])} som\n"
+            f"Qaytarish: {fmt(q['jami'])} som\n"
+            f"Xarajat:  {fmt(x['jami'])} som\n"
+            f"Foyda:    {fmt(s['jami'] - x['jami'])} som\n"
+            + (f"------------------------\n" + top_matn if top_matn else "")
+            + f"========================"
+        )
+    except Exception as e:
+        return f"Xato: {e}"
+
+
+def telegram_polling_ishga_tushir():
+    """Telegram long polling — xabarlarni tinglash"""
+    import urllib.request, urllib.error
+
+    print("🤖 Telegram bot polling ishga tushdi")
+    offset = 0
+
+    while True:
+        try:
+            tg = telegram_sozlamalarni_ol()
+            if not tg:
+                time.sleep(30); continue
+
+            token = tg['token'].strip()
+            url = f"https://api.telegram.org/bot{token}/getUpdates?offset={offset}&timeout=25&allowed_updates=[\"message\",\"callback_query\"]"
+
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=30) as r:
+                result = json.loads(r.read().decode('utf-8'))
+
+            if not result.get('ok'):
+                time.sleep(10); continue
+
+            for update in result.get('result', []):
+                offset = update['update_id'] + 1
+
+                # /start yoki matn xabari
+                if 'message' in update:
+                    msg = update['message']
+                    chat_id = str(msg['chat']['id'])
+                    matn = msg.get('text', '')
+
+                    # Faqat botga ulangan chat ga javob
+                    if chat_id != str(tg['chat_id']).strip():
+                        # Yangi chat_id bo'lsa ham qabul qil
+                        pass
+
+                    if matn in ('/start', '/menu', 'menu'):
+                        telegram_yuborish(token, chat_id,
+                            "Qurilish Dokoni boshqaruvi\nQuyidagi hisobotlardan birini tanlang:",
+                            asosiy_menyu_keyboard())
+
+                # Inline tugma bosildi
+                elif 'callback_query' in update:
+                    cq = update['callback_query']
+                    chat_id = str(cq['message']['chat']['id'])
+                    data = cq.get('data', '')
+                    cq_id = cq['id']
+
+                    # Callback ga javob (animatsiyani to'xtatish)
+                    telegram_callback_javob(token, cq_id)
+
+                    if data == 'moliya':
+                        matn = moliya_hisoboti_matn()
+                        telegram_yuborish(token, chat_id, matn, asosiy_menyu_keyboard())
+                    elif data == 'ombor':
+                        matn = ombor_hisoboti_matn()
+                        telegram_yuborish(token, chat_id, matn, asosiy_menyu_keyboard())
+                    elif data == 'qarzlar':
+                        matn = qarzlar_matn()
+                        telegram_yuborish(token, chat_id, matn, asosiy_menyu_keyboard())
+                    elif data == 'bugun':
+                        matn = bugun_matn()
+                        telegram_yuborish(token, chat_id, matn, asosiy_menyu_keyboard())
+
+        except urllib.error.URLError:
+            time.sleep(15)
+        except Exception as e:
+            print(f"Polling xato: {e}")
+            time.sleep(10)
 
 
 def telegram_sozlamalarni_ol():
@@ -1837,6 +2138,10 @@ if __name__ == '__main__':
     # Kunlik hisobot scheduler — background thread
     scheduler_thread = threading.Thread(target=kunlik_hisobot_scheduler, daemon=True)
     scheduler_thread.start()
+
+    # Telegram bot polling — background thread
+    polling_thread = threading.Thread(target=telegram_polling_ishga_tushir, daemon=True)
+    polling_thread.start()
 
     server = HTTPServer(('0.0.0.0', PORT), Handler)
     server.serve_forever()
