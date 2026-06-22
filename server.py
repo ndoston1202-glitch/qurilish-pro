@@ -392,6 +392,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', mime)
             self.send_header('Content-Length', len(data))
+            # JS va HTML fayllarini cache qilmasin — yangi versiya darhol yuklansin
+            if ext in ('.js', '.html', '.css'):
+                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                self.send_header('Pragma', 'no-cache')
+                self.send_header('Expires', '0')
             self.end_headers()
             self.wfile.write(data)
         except:
