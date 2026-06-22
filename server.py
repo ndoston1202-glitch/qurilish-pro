@@ -376,20 +376,22 @@ def telegram_sotuv_bildirishnoma(sotuv_id, chek_raqam, kassir_ismi, jami_summa, 
         try:
             tg = telegram_sozlamalarni_ol()
             if not tg: return
-            if not tg['sozlamalar'].get('har_sotuv'): return
-            tolov_icon = '💵' if tolov_turi == 'naqd' else '💳' if tolov_turi == 'karta' else '📋'
+            # har_sotuv yoqilmagan bo'lsa ham yuborish (default True)
+            if tg['sozlamalar'].get('har_sotuv') == False: return
+            tolov_icon = 'Naqd' if tolov_turi == 'naqd' else 'Karta' if tolov_turi == 'karta' else 'Qarz'
+            summa_format = f"{int(jami_summa):,}".replace(',', ' ')
             matn = (
-                f"🛒 *Yangi sotuv!*\n"
-                f"────────────────\n"
-                f"🧾 Chek: `{chek_raqam}`\n"
-                f"💰 Summa: *{'{:,.0f}'.format(jami_summa)} so'm*\n"
-                f"{tolov_icon} To'lov: {tolov_turi.capitalize()}\n"
-                f"👤 Kassir: {kassir_ismi}\n"
-                + (f"👥 Mijoz: {mijoz_ismi}\n" if mijoz_ismi else "")
-                + f"🕐 Vaqt: {datetime.now().strftime('%H:%M:%S')}"
+                f"Yangi sotuv!\n"
+                f"Chek: {chek_raqam}\n"
+                f"Summa: {summa_format} so'm\n"
+                f"Tolov: {tolov_icon}\n"
+                f"Kassir: {kassir_ismi}\n"
+                + (f"Mijoz: {mijoz_ismi}\n" if mijoz_ismi else "")
+                + f"Vaqt: {datetime.now().strftime('%H:%M:%S')}"
             )
             telegram_yuborish(tg['token'], tg['chat_id'], matn)
-        except: pass
+        except Exception as e:
+            print(f"Telegram sotuv xato: {e}")
     threading.Thread(target=_yuborish, daemon=True).start()
 
 
@@ -434,29 +436,32 @@ def telegram_kunlik_hisobot_yuborish(kun=None):
         sof_foyda = foyda - (jx['jami'] if jx else 0)
         kun_uz = datetime.strptime(kun, '%Y-%m-%d').strftime('%d.%m.%Y')
 
+        def fmt(n):
+            return f"{int(n):,}".replace(',', ' ')
+
         top_matn = ''
         if top:
-            top_matn = '\n📦 *Top mahsulotlar:*\n'
+            top_matn = '\nTop mahsulotlar:\n'
             for i, t in enumerate(top, 1):
-                top_matn += f"  {i}. {t['nomi']} — {'{:,.0f}'.format(t['jami'])} so'm\n"
+                top_matn += f"  {i}. {t['nomi']} - {fmt(t['jami'])} som\n"
 
         kechikkan_matn = ''
         if kechikkan and kechikkan['son'] > 0:
-            kechikkan_matn = f"\n⚠️ *Kechikkan qarzlar:* {kechikkan['son']} ta ({'{:,.0f}'.format(kechikkan['jami'])} so'm)\n"
+            kechikkan_matn = f"\nKechikkan qarzlar: {kechikkan['son']} ta ({fmt(kechikkan['jami'])} som)\n"
 
         matn = (
-            f"📊 *Kunlik hisobot — {kun_uz}*\n"
-            f"════════════════\n"
-            f"🛒 Sotuvlar: *{js['son']} ta*\n"
-            f"💰 Daromad: *{'{:,.0f}'.format(js['jami'])} so'm*\n"
-            f"↩️ Qaytarish: {jq['son']} ta ({'{:,.0f}'.format(jq['jami'])} so'm)\n"
-            f"💸 Xarajat: {'{:,.0f}'.format(jx['jami'])} so'm\n"
-            f"────────────────\n"
-            f"📈 Sof foyda: *{'{:,.0f}'.format(sof_foyda)} so'm*\n"
+            f"Kunlik hisobot - {kun_uz}\n"
+            f"========================\n"
+            f"Sotuvlar: {js['son']} ta\n"
+            f"Daromad: {fmt(js['jami'])} som\n"
+            f"Qaytarish: {jq['son']} ta ({fmt(jq['jami'])} som)\n"
+            f"Xarajat: {fmt(jx['jami'])} som\n"
+            f"------------------------\n"
+            f"Sof foyda: {fmt(sof_foyda)} som\n"
             + top_matn
             + kechikkan_matn
-            + f"════════════════\n"
-            f"🏗️ Qurilish Do'koni"
+            + f"========================\n"
+            f"Qurilish Dokoni"
         )
         telegram_yuborish(tg['token'], tg['chat_id'], matn)
     except Exception as e:
