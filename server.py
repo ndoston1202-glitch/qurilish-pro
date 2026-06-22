@@ -749,7 +749,8 @@ def sms_yuborish(provayder, login, token, sender, telefon, matn):
         return {'xato': str(e)}
 
 
-def tg_yuborish_bg(matn):    """Telegram ga background thread orqali xabar yuborish"""
+def tg_yuborish_bg(matn):
+    """Telegram ga background thread orqali xabar yuborish"""
     def _():
         try:
             tg = telegram_sozlamalarni_ol()
