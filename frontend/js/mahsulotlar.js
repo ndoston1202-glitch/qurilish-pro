@@ -803,10 +803,31 @@ async function kopEtiketkaChiqar(mahsulotIdlar, shablon_id) {
               font-size:${el.shrift_olchami * 3.78 * 0.7}px;font-weight:${el.qalin?'bold':'normal'};
               font-style:${el.kursiv?'italic':'normal'};color:${el.rang||'#000'};
               text-align:${el.hizalash||'left'};overflow:hidden;white-space:nowrap;
-              display:flex;align-items:center;padding:0 2px">${qiymat}</div>`;
+              display:flex;align-items:center;justify-content:${el.hizalash==='center'?'center':el.hizalash==='right'?'flex-end':'flex-start'};padding:0 2px">${qiymat}</div>`;
+          if (el.tur === 'shtrixkod') {
+            const kodVal = qiymat || m.shtrix_kod || m.sku || '0000';
+            const skala = Math.min(1, kw / ((String(kodVal).length + 3) * 11));
+            return `
+            <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;height:${kh}px;
+              display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
+              <div style="transform:scaleX(${skala});transform-origin:center">
+                ${typeof barcode128Html==='function'?barcode128Html(kodVal, kh*0.7):''}
+              </div>
+              <div style="font-size:${Math.max(6,(el.shrift_olchami||6)*3.78*0.45)}px;margin-top:1px;letter-spacing:1px">${kodVal}</div>
+            </div>`;
+          }
+          if (el.tur === 'qrkod') return `
+            <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;height:${kh}px;
+              display:flex;align-items:center;justify-content:center">
+              <div style="width:${Math.min(kw,kh)}px;height:${Math.min(kw,kh)}px;
+                background:repeating-conic-gradient(#000 0% 25%, #fff 0% 50%) 0 0 / 20% 20%"></div>
+            </div>`;
           if (el.tur === 'chiziq') return `
             <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;
               border-top:${el.qalinlik||1}px solid ${el.rang||'#000'}"></div>`;
+          if (el.tur === 'rasm' && el.src) return `
+            <img src="${el.src}" style="position:absolute;left:${x}px;top:${y}px;
+              width:${kw}px;height:${kh}px;object-fit:contain">`;
           return '';
         }).join('');
 

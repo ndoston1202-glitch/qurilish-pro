@@ -189,11 +189,13 @@ function eElementlarKorsatish() {
         width:100%;padding:0 2px;white-space:nowrap;overflow:hidden"
         >${eMatnQiymat(el)}</span>`;
     } else if (el.tur === 'shtrixkod') {
-      div.innerHTML = `<div style="text-align:center;font-size:${8*eMiqyos*0.5}px;color:#333;width:100%">
-        <div style="display:flex;gap:1px;justify-content:center;height:70%;align-items:flex-end">
-          ${eShtirixKodChiziqlar()}
+      const kodQiymat = eMatnQiymat(el) || (eJoriyMahsulot ? (eJoriyMahsulot.shtrix_kod || eJoriyMahsulot.sku) : '0000');
+      const barH = Math.max(8, (el.balandlik || 14) * eMiqyos * 0.6);
+      div.innerHTML = `<div style="text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="transform:scaleX(${Math.min(1, (el.kenglik*eMiqyos)/((String(kodQiymat).length+3)*11))});transform-origin:center">
+          ${barcode128Html(kodQiymat, barH)}
         </div>
-        <div style="font-size:${6*eMiqyos*0.5}px;margin-top:1px">${eMatnQiymat(el)}</div>
+        <div style="font-size:${Math.max(6,(el.shrift_olchami||6)*eMiqyos*0.5)}px;margin-top:1px;letter-spacing:1px">${kodQiymat}</div>
       </div>`;
     } else if (el.tur === 'qrkod') {
       div.innerHTML = `<div style="width:${el.balandlik*eMiqyos*0.9}px;height:${el.balandlik*eMiqyos*0.9}px;
@@ -216,6 +218,49 @@ function eElementlarKorsatish() {
     }
     canvas.appendChild(div);
   });
+}
+
+// ===== HAQIQIY CODE128 BARCODE GENERATOR =====
+const CODE128_PATTERNS = [
+"212222","222122","222221","121223","121322","131222","122213","122312","132212","221213",
+"221312","231212","112232","122132","122231","113222","123122","123221","223211","221132",
+"221231","213212","223112","312131","311222","321122","321221","312212","322112","322211",
+"212123","212321","232121","111323","131123","131321","112313","132113","132311","211313",
+"231113","231311","112133","112331","132131","113123","113321","133121","313121","211331",
+"231131","213113","213311","213131","311123","311321","331121","312113","312311","332111",
+"314111","221411","431111","111224","111422","121124","121421","141122","141221","112214",
+"112412","122114","122411","142112","142211","241211","221114","413111","241112","134111",
+"111242","121142","121241","114212","124112","124211","411212","421112","421211","212141",
+"214121","412121","111143","111341","131141","114113","114311","411113","411311","113141",
+"114131","311141","411131","211412","211214","211232","2331112"];
+
+// Code128B — har qanday matn/raqam uchun skanerlanadigan barcode HTML
+function barcode128Html(matn, balandlikPx) {
+  if (!matn) matn = '0000';
+  matn = String(matn);
+  const START_B = 104, STOP = 106;
+  let kodlar = [START_B];
+  let sum = START_B;
+  for (let i = 0; i < matn.length; i++) {
+    let val = matn.charCodeAt(i) - 32;
+    if (val < 0 || val > 94) val = 0; // faqat ASCII 32-126
+    kodlar.push(val);
+    sum += val * (i + 1);
+  }
+  kodlar.push(sum % 103); // checksum
+  kodlar.push(STOP);
+
+  // Har kod patternini chiziqlarga aylantirish
+  let bars = '';
+  kodlar.forEach(kod => {
+    const p = CODE128_PATTERNS[kod];
+    for (let j = 0; j < p.length; j++) {
+      const w = parseInt(p[j]);
+      const rang = (j % 2 === 0) ? '#000' : '#fff';
+      bars += `<span style="display:inline-block;width:${w}px;height:${balandlikPx||30}px;background:${rang}"></span>`;
+    }
+  });
+  return `<div style="display:inline-flex;align-items:flex-end;line-height:0;font-size:0">${bars}</div>`;
 }
 
 function eShtirixKodChiziqlar() {
@@ -574,11 +619,11 @@ function eChiqarish() {
         display:flex;align-items:center">${qiymat}</div>`;
     if (el.tur === 'shtrixkod') return `
       <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;height:${kh}px;
-        display:flex;flex-direction:column;align-items:center;justify-content:center">
-        <div style="display:flex;gap:1px;height:75%;align-items:flex-end">
-          ${eShtirixKodChiziqlar()}
+        display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
+        <div style="transform:scaleX(${Math.min(1, kw/((String(qiymat).length+3)*11))});transform-origin:center">
+          ${barcode128Html(qiymat, kh*0.7)}
         </div>
-        <div style="font-size:${6*eMiqyos*0.5}px;margin-top:1px">${qiymat}</div>
+        <div style="font-size:${Math.max(6,6*eMiqyos*0.5)}px;margin-top:1px;letter-spacing:1px">${qiymat}</div>
       </div>`;
     if (el.tur === 'chiziq') return `
       <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;
