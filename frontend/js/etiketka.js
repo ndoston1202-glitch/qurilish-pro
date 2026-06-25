@@ -22,6 +22,9 @@ async function etiketkaYukla(mahsulot_id) {
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <h3 style="font-size:15px"><i class="fas fa-tag"></i> Etiketka dizayner</h3>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="etiketkaTayyorModal()" style="background:#8b5cf6;border-color:#8b5cf6">
+                <i class="fas fa-magic"></i> Tayyor shablon
+              </button>
               <button class="btn btn-secondary btn-sm" onclick="eElementQosh('matn')">
                 <i class="fas fa-font"></i> Matn
               </button>
@@ -663,4 +666,101 @@ async function eShablonBilanChiqar(shablon_id) {
   eJoriyElementlar = JSON.parse(s.elementlar || '[]');
   // To'g'ridan chiqarish
   eChiqarish();
+}
+
+
+
+// ===== TAYYOR SHABLONLAR (4 razmer) =====
+const ETIKETKA_TAYYOR = {
+  '58x30': {
+    nomi: 'Etiketka 58×30', uzunlik: 58, balandlik: 30,
+    elementlar: [
+      { tur:'matn', x:2, y:1.5, kenglik:54, balandlik:6, maydon:'mahsulot_nomi', shrift_olchami:9, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:2, y:8.5, kenglik:30, balandlik:4, maydon:'sku', shrift_olchami:7, hizalash:'left', rang:'#000000' },
+      { tur:'shtrixkod', x:2, y:13, kenglik:34, balandlik:14, maydon:'shtrix_kod', shrift_olchami:6 },
+      { tur:'matn', x:37, y:15, kenglik:19, balandlik:10, maydon:'narxi', shrift_olchami:13, qalin:true, hizalash:'right', rang:'#000000' },
+    ]
+  },
+  '58x40': {
+    nomi: 'Etiketka 58×40', uzunlik: 58, balandlik: 40,
+    elementlar: [
+      { tur:'matn', x:2, y:2, kenglik:54, balandlik:7, maydon:'mahsulot_nomi', shrift_olchami:10, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:2, y:10, kenglik:54, balandlik:5, maydon:'sku', shrift_olchami:8, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:2, y:16, kenglik:54, balandlik:14, maydon:'shtrix_kod', shrift_olchami:7 },
+      { tur:'matn', x:2, y:31, kenglik:54, balandlik:8, maydon:'narxi', shrift_olchami:15, qalin:true, hizalash:'center', rang:'#000000' },
+    ]
+  },
+  '30x40': {
+    nomi: 'Etiketka 30×40', uzunlik: 30, balandlik: 40,
+    elementlar: [
+      { tur:'matn', x:1, y:2, kenglik:28, balandlik:8, maydon:'mahsulot_nomi', shrift_olchami:8, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:11, kenglik:28, balandlik:4, maydon:'sku', shrift_olchami:6, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:1, y:16, kenglik:28, balandlik:13, maydon:'shtrix_kod', shrift_olchami:6 },
+      { tur:'matn', x:1, y:31, kenglik:28, balandlik:7, maydon:'narxi', shrift_olchami:12, qalin:true, hizalash:'center', rang:'#000000' },
+    ]
+  },
+  '20x30': {
+    nomi: 'Etiketka 20×30', uzunlik: 20, balandlik: 30,
+    elementlar: [
+      { tur:'matn', x:1, y:1, kenglik:18, balandlik:6, maydon:'mahsulot_nomi', shrift_olchami:6, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:7.5, kenglik:18, balandlik:3, maydon:'sku', shrift_olchami:5, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:1, y:11, kenglik:18, balandlik:10, maydon:'shtrix_kod', shrift_olchami:5 },
+      { tur:'matn', x:1, y:22, kenglik:18, balandlik:6, maydon:'narxi', shrift_olchami:9, qalin:true, hizalash:'center', rang:'#000000' },
+    ]
+  },
+};
+
+function etiketkaTayyorModal() {
+  const kartalar = Object.entries(ETIKETKA_TAYYOR).map(([kalit, sh]) => {
+    // Vizual nisbat — preview qutisi
+    const w = Math.min(sh.uzunlik * 2.2, 150);
+    const h = Math.min(sh.balandlik * 2.2, 110);
+    return `
+      <div onclick="etiketkaTayyorYukla('${kalit}')"
+        style="border:2px solid #e2e8f0;border-radius:12px;padding:14px;cursor:pointer;
+        display:flex;flex-direction:column;align-items:center;gap:10px;transition:all 0.15s;background:white"
+        onmouseover="this.style.borderColor='#8b5cf6';this.style.background='#faf5ff'"
+        onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+        <div style="font-weight:700;font-size:15px;color:#1e293b">${sh.uzunlik}×${sh.balandlik} mm</div>
+        <!-- Mini preview -->
+        <div style="width:${w}px;height:${h}px;border:1.5px solid #cbd5e1;border-radius:4px;
+          position:relative;background:white;display:flex;flex-direction:column;
+          align-items:center;justify-content:space-between;padding:4px;overflow:hidden">
+          <div style="font-size:8px;font-weight:700;text-align:center;line-height:1.1">Mahsulot</div>
+          <div style="font-size:6px;color:#8b5cf6">SKU: 0001</div>
+          <div style="display:flex;gap:1px;align-items:flex-end;height:30%">
+            ${Array.from({length:12},(_,i)=>`<div style="width:1.5px;height:${60+Math.random()*40}%;background:#000"></div>`).join('')}
+          </div>
+          <div style="font-size:${kalit==='58x30'?'8':'10'}px;font-weight:700;color:#2563eb">99 000</div>
+        </div>
+        <div style="font-size:11px;color:#94a3b8">Tanlash uchun bosing</div>
+      </div>`;
+  }).join('');
+
+  modalOch('🏷️ Tayyor etiketka shablonlari', `
+    <p style="color:#64748b;font-size:13px;margin-bottom:14px">
+      Razmerni tanlang — mahsulot nomi, SKU, shtrix-kod va narx avtomatik joylashtiriladi:
+    </p>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+      ${kartalar}
+    </div>`);
+}
+
+function etiketkaTayyorYukla(kalit) {
+  const sh = ETIKETKA_TAYYOR[kalit];
+  if (!sh) return;
+  modalYop();
+  // O'lcham va elementlarni o'rnatish
+  eUzunlik = sh.uzunlik;
+  eBalandlik = sh.balandlik;
+  eJoriyElementlar = sh.elementlar.map((el, i) => ({ ...el, id: Date.now() + i }));
+  eJoriyTanlangan = null;
+  eJoriyShablon = null; // yangi shablon sifatida saqlanadi
+  // Inputlarni yangilash
+  const ui = document.getElementById('eUzunlikInput');
+  const bi = document.getElementById('eBalandlikInput');
+  if (ui) ui.value = eUzunlik;
+  if (bi) bi.value = eBalandlik;
+  eCanvasYanila();
+  toast(`✅ ${sh.nomi} shabloni yaratildi! Kerak bo'lsa tahrirlang va saqlang.`, 'success');
 }
