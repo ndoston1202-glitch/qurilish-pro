@@ -2096,6 +2096,46 @@ O'zbek tilida batafsil javob ber."""
                     conn.commit(); return self.send_json({'muvaffaqiyat':True,'id':r})
                 except Exception as e: return self.send_error_json(str(e))
 
+            # KO'P MAHSULOT O'CHIRISH (faqat miqdor=0)
+            if path == '/api/mahsulotlar/kop_ochir':
+                idlar = body.get('idlar', [])
+                if not idlar: return self.send_error_json('Mahsulot tanlanmagan!')
+                ochirildi = 0
+                otkazildi = []
+                for mid in idlar:
+                    row = conn.execute("SELECT miqdor,nomi,birlik,sotish_narxi FROM mahsulotlar WHERE id=? AND faol=1", (mid,)).fetchone()
+                    if not row: continue
+                    if row['miqdor'] > 0:
+                        otkazildi.append(f"{row['nomi']} (miqdor: {row['miqdor']})")
+                        continue
+                    conn.execute("INSERT INTO mahsulot_logi (amal,mahsulot_id,mahsulot_nomi,birlik,sotish_narxi,miqdor,izoh) VALUES (?,?,?,?,?,?,?)",
+                        ('ochirildi', mid, row['nomi'], row['birlik'], row['sotish_narxi'], row['miqdor'], "Ko'p o'chirish"))
+                    conn.execute("UPDATE mahsulotlar SET faol=0 WHERE id=?", (mid,))
+                    ochirildi += 1
+                conn.commit()
+                return self.send_json({'muvaffaqiyat':True, 'ochirildi':ochirildi, 'otkazildi':otkazildi})
+
+            # KO'P MIJOZ O'CHIRISH (faqat qarzi 0)
+            if path == '/api/mijozlar/kop_ochir':
+                idlar = body.get('idlar', [])
+                if not idlar: return self.send_error_json('Mijoz tanlanmagan!')
+                ochirildi = 0
+                otkazildi = []
+                for mid in idlar:
+                    row = conn.execute("SELECT ism,familiya,qarz FROM mijozlar WHERE id=? AND faol=1", (mid,)).fetchone()
+                    if not row: continue
+                    # Ochiq qarz tarixini ham tekshirish
+                    ochiq_qarz = conn.execute("SELECT COALESCE(SUM(qoldi),0) as q FROM qarz_tarixi WHERE mijoz_id=? AND holat='ochiq'", (mid,)).fetchone()
+                    jami_qarz = (row['qarz'] or 0) + (ochiq_qarz['q'] or 0)
+                    if jami_qarz > 0:
+                        ism = (row['ism'] + ' ' + (row['familiya'] or '')).strip()
+                        otkazildi.append(f"{ism} (qarz: {int(jami_qarz)})")
+                        continue
+                    conn.execute("UPDATE mijozlar SET faol=0 WHERE id=?", (mid,))
+                    ochirildi += 1
+                conn.commit()
+                return self.send_json({'muvaffaqiyat':True, 'ochirildi':ochirildi, 'otkazildi':otkazildi})
+
             if path == '/api/mahsulotlar':
                 try:
                     mavjud = conn.execute("SELECT id FROM mahsulotlar WHERE LOWER(nomi)=LOWER(?) AND faol=1", (body['nomi'],)).fetchone()

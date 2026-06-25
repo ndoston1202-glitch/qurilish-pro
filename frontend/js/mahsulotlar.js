@@ -65,6 +65,11 @@ async function mahsulotlarTabYukla() {
             <i class="fas fa-tag" style="color:#8b5cf6"></i>
             <span id="etiketkaChiqarSon">0</span> ta etiketka
           </button>
+          <button class="btn btn-danger btn-sm" id="kopOchirBtn" style="display:none"
+            onclick="tanlanganMahsulotOchir()">
+            <i class="fas fa-trash"></i>
+            <span id="kopOchirSon">0</span> ta o'chirish
+          </button>
           <button class="btn btn-primary" onclick="mahsulotQosh()">
             <i class="fas fa-plus"></i> Yangi mahsulot
           </button>
@@ -645,6 +650,11 @@ function etiketkaCheckOzgartir() {
   const son = document.getElementById('etiketkaChiqarSon');
   if (btn) btn.style.display = tanlangan.length > 0 ? 'flex' : 'none';
   if (son) son.textContent = tanlangan.length;
+  // O'chirish tugmasi
+  const ochBtn = document.getElementById('kopOchirBtn');
+  const ochSon = document.getElementById('kopOchirSon');
+  if (ochBtn) ochBtn.style.display = tanlangan.length > 0 ? 'flex' : 'none';
+  if (ochSon) ochSon.textContent = tanlangan.length;
   // Hamma tanlash checkboxni yangilash
   const hammasi = document.querySelectorAll('.mah-checkbox');
   const hammaChk = document.getElementById('hammaTanla');
@@ -652,6 +662,27 @@ function etiketkaCheckOzgartir() {
     hammaChk.checked = tanlangan.length === hammasi.length;
     hammaChk.indeterminate = tanlangan.length > 0 && tanlangan.length < hammasi.length;
   }
+}
+
+// ===== KO'P MAHSULOT O'CHIRISH =====
+async function tanlanganMahsulotOchir() {
+  const tanlangan = [...document.querySelectorAll('.mah-checkbox:checked')];
+  if (!tanlangan.length) { toast('Mahsulot tanlanmagan!', 'warning'); return; }
+  const idlar = tanlangan.map(c => parseInt(c.value));
+
+  tasdiqlash(`${idlar.length} ta mahsulotni o'chirasizmi?\n(Faqat miqdori 0 bo'lganlar o'chiriladi)`, async () => {
+    try {
+      const r = await apiPost('/mahsulotlar/kop_ochir', { idlar });
+      let xabar = `✅ ${r.ochirildi} ta mahsulot o'chirildi!`;
+      toast(xabar, 'success');
+      if (r.otkazildi && r.otkazildi.length) {
+        setTimeout(() => {
+          toast(`⚠️ ${r.otkazildi.length} ta o'tkazildi (miqdori > 0)`, 'warning');
+        }, 2500);
+      }
+      mahsulotlarTabYukla();
+    } catch(e) { toast(e.message, 'error'); }
+  });
 }
 
 async function tanlanganlargaEtiketka() {

@@ -20,6 +20,11 @@ async function mijozlarYukla() {
             </select>
           </div>
           <div style="display:flex;gap:8px">
+            <button class="btn btn-danger btn-sm" id="mijozKopOchirBtn" style="display:none"
+              onclick="tanlanganMijozOchir()">
+              <i class="fas fa-trash"></i>
+              <span id="mijozKopOchirSon">0</span> ta o'chirish
+            </button>
             <button class="btn btn-secondary btn-sm" onclick="mijozlarExcelImport()">
               <i class="fas fa-file-excel"></i> Excel import
             </button>
@@ -136,6 +141,10 @@ function mijozlarJadvalKorsatish(royxat) {
       <table>
         <thead>
           <tr>
+            <th style="width:36px">
+              <input type="checkbox" id="mijozHammaTanla" onchange="mijozHammaTanla(this)"
+                title="Hammasini tanlash" style="cursor:pointer;width:16px;height:16px">
+            </th>
             <th>#</th><th>Ismi</th><th>Telefon</th><th>Manzil</th>
             <th>Qarz holati</th><th>Sotuvlar</th><th>Yaratilgan</th><th>Amallar</th>
           </tr>
@@ -145,8 +154,15 @@ function mijozlarJadvalKorsatish(royxat) {
             const qarzRang = m.qarz_status === 'kechikkan' ? '#fff5f5'
               : m.qarz_status === 'bugun' ? '#fffbeb'
               : m.qarz_status === 'yaqin' ? '#fefce8' : '';
+            const qarzsiz = !m.ochiq_qarz_soni && !(m.qarz > 0);
             return `
             <tr style="background:${qarzRang}">
+              <td>
+                <input type="checkbox" class="mijoz-checkbox" value="${m.id}"
+                  data-qarzsiz="${qarzsiz?1:0}"
+                  onchange="mijozCheckOzgartir()"
+                  style="cursor:pointer;width:16px;height:16px">
+              </td>
               <td>${i+1}</td>
               <td>
                 <div style="display:flex;align-items:center;gap:8px">
@@ -191,6 +207,51 @@ function mijozlarJadvalKorsatish(royxat) {
       Jami: ${royxat.length} ta mijoz |
       Qarzli: <b style="color:#ef4444">${royxat.filter(m=>m.ochiq_qarz_soni>0).length}</b> ta
     </div>`;
+}
+
+// ===== KO'P MIJOZ TANLASH / O'CHIRISH =====
+function mijozHammaTanla(chk) {
+  document.querySelectorAll('.mijoz-checkbox').forEach(c => c.checked = chk.checked);
+  mijozCheckOzgartir();
+}
+
+function mijozCheckOzgartir() {
+  const tanlangan = document.querySelectorAll('.mijoz-checkbox:checked');
+  const btn = document.getElementById('mijozKopOchirBtn');
+  const son = document.getElementById('mijozKopOchirSon');
+  if (btn) btn.style.display = tanlangan.length > 0 ? 'flex' : 'none';
+  if (son) son.textContent = tanlangan.length;
+  const hammasi = document.querySelectorAll('.mijoz-checkbox');
+  const hammaChk = document.getElementById('mijozHammaTanla');
+  if (hammaChk && hammasi.length > 0) {
+    hammaChk.checked = tanlangan.length === hammasi.length;
+    hammaChk.indeterminate = tanlangan.length > 0 && tanlangan.length < hammasi.length;
+  }
+}
+
+async function tanlanganMijozOchir() {
+  const tanlangan = [...document.querySelectorAll('.mijoz-checkbox:checked')];
+  if (!tanlangan.length) { toast('Mijoz tanlanmagan!', 'warning'); return; }
+  const idlar = tanlangan.map(c => parseInt(c.value));
+  const qarzlilar = tanlangan.filter(c => c.dataset.qarzsiz === '0').length;
+
+  let xabar = `${idlar.length} ta mijozni o'chirasizmi?\n(Faqat qarzi 0 bo'lganlar o'chiriladi)`;
+  if (qarzlilar > 0) {
+    xabar += `\n⚠️ ${qarzlilar} ta mijozda qarz bor — o'tkazib yuboriladi`;
+  }
+
+  tasdiqlash(xabar, async () => {
+    try {
+      const r = await apiPost('/mijozlar/kop_ochir', { idlar });
+      toast(`✅ ${r.ochirildi} ta mijoz o'chirildi!`, 'success');
+      if (r.otkazildi && r.otkazildi.length) {
+        setTimeout(() => {
+          toast(`⚠️ ${r.otkazildi.length} ta o'tkazildi (qarzi bor)`, 'warning');
+        }, 2500);
+      }
+      mijozlarRoyxatYukla();
+    } catch(e) { toast(e.message, 'error'); }
+  });
 }
 
 
