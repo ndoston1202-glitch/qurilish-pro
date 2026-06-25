@@ -489,6 +489,12 @@ def init_db():
         conn.commit()
     except: pass
 
+    # v12: mahsulot minusga sotish ruxsati
+    try:
+        conn.execute("ALTER TABLE mahsulotlar ADD COLUMN minus_sotish INTEGER DEFAULT 0")
+        conn.commit()
+    except: pass
+
     conn.close()
     print("✅ Database tayyor!")
 
@@ -2102,20 +2108,24 @@ O'zbek tilida batafsil javob ber."""
                     conn.commit(); return self.send_json({'muvaffaqiyat':True,'id':r})
                 except Exception as e: return self.send_error_json(str(e))
 
-            # KO'P MAHSULOT O'CHIRISH (tasdiqlash bilan — miqdordan qat'i nazar)
+            # KO'P MAHSULOT O'CHIRISH (faqat qoldiq=0)
             if path == '/api/mahsulotlar/kop_ochir':
                 idlar = body.get('idlar', [])
                 if not idlar: return self.send_error_json('Mahsulot tanlanmagan!')
                 ochirildi = 0
+                otkazildi = []
                 for mid in idlar:
                     row = conn.execute("SELECT miqdor,nomi,birlik,sotish_narxi FROM mahsulotlar WHERE id=? AND faol=1", (mid,)).fetchone()
                     if not row: continue
+                    if row['miqdor'] != 0:
+                        otkazildi.append(f"{row['nomi']} (qoldiq: {row['miqdor']})")
+                        continue
                     conn.execute("INSERT INTO mahsulot_logi (amal,mahsulot_id,mahsulot_nomi,birlik,sotish_narxi,miqdor,izoh) VALUES (?,?,?,?,?,?,?)",
                         ('ochirildi', mid, row['nomi'], row['birlik'], row['sotish_narxi'], row['miqdor'], "Ko'p o'chirish"))
                     conn.execute("UPDATE mahsulotlar SET faol=0 WHERE id=?", (mid,))
                     ochirildi += 1
                 conn.commit()
-                return self.send_json({'muvaffaqiyat':True, 'ochirildi':ochirildi, 'otkazildi':[]})
+                return self.send_json({'muvaffaqiyat':True, 'ochirildi':ochirildi, 'otkazildi':otkazildi})
 
             # KO'P MIJOZ O'CHIRISH (faqat qarzi 0)
             if path == '/api/mijozlar/kop_ochir':
@@ -2149,9 +2159,9 @@ O'zbek tilida batafsil javob ber."""
                     while conn.execute("SELECT id FROM mahsulotlar WHERE sku=?", (sku,)).fetchone():
                         keyingi += 1
                         sku = f"{keyingi:04d}"
-                    r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,sku,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm,sotuvda_korinsin,brend_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,sku,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm,sotuvda_korinsin,brend_id,minus_sotish) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),sku,body.get('birlik','dona'),
-                         body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'))).lastrowid
+                         body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'),body.get('minus_sotish',0))).lastrowid
                     # LOG: mahsulot qo'shildi
                     foydalanuvchi_id = body.get('foydalanuvchi_id')
                     fism = ''
@@ -2190,9 +2200,12 @@ O'zbek tilida batafsil javob ber."""
                 else:
                     mijoz_ismi = body.get('mijoz_ismi','')
                 for m in mahsulotlar:
-                    row = conn.execute("SELECT miqdor,nomi FROM mahsulotlar WHERE id=?", (m['mahsulot_id'],)).fetchone()
-                    if not row or row['miqdor'] < m['miqdor']:
-                        return self.send_error_json(f"'{row['nomi'] if row else 'Mahsulot'}' omborda yetarli emas! Mavjud: {row['miqdor'] if row else 0}")
+                    row = conn.execute("SELECT miqdor,nomi,minus_sotish FROM mahsulotlar WHERE id=?", (m['mahsulot_id'],)).fetchone()
+                    if not row:
+                        return self.send_error_json("Mahsulot topilmadi!")
+                    # minus_sotish=1 bo'lsa qoldiq yetmasa ham sotishga ruxsat (qoldiq minusga o'tadi)
+                    if row['miqdor'] < m['miqdor'] and not row['minus_sotish']:
+                        return self.send_error_json(f"'{row['nomi']}' omborda yetarli emas! Mavjud: {row['miqdor']}")
                 r = conn.execute("INSERT INTO sotuvlar (chek_raqam,kassir_id,mijoz_id,jami_summa,chegirma,tolov_turi,mijoz_ismi,mijoz_telefon,izoh) VALUES (?,?,?,?,?,?,?,?,?)",
                     (chek,body['kassir_id'],mijoz_id,yakuniy,chegirma,body.get('tolov_turi','naqd'),mijoz_ismi,body.get('mijoz_telefon',''),body.get('izoh',''))).lastrowid
                 for m in mahsulotlar:
@@ -2386,6 +2399,9 @@ O'zbek tilida batafsil javob ber."""
                 if not csv_text: return self.send_error_json('CSV ma\'lumot yo\'q!')
                 reader = csv.DictReader(io.StringIO(csv_text))
                 qoshildi = 0; xatolar = []
+                # SKU hisoblagichni boshlash — eng katta mavjud SKU dan
+                sku_row = conn.execute("SELECT sku FROM mahsulotlar WHERE sku GLOB '[0-9][0-9][0-9][0-9]' ORDER BY CAST(sku AS INTEGER) DESC LIMIT 1").fetchone()
+                sku_keyingi = (int(sku_row['sku']) + 1) if sku_row and sku_row['sku'] else 1
                 for i, row in enumerate(reader, 2):
                     nomi = (row.get('nomi') or row.get('Nomi') or '').strip()
                     if not nomi: continue
@@ -2407,8 +2423,14 @@ O'zbek tilida batafsil javob ber."""
                         if k: kat_id = k['id']
                         else:
                             kat_id = conn.execute("INSERT INTO kategoriyalar (nomi,tavsif) VALUES (?,?)", (kat_nomi,'Import orqali qo\'shildi')).lastrowid
-                    conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor) VALUES (?,?,?,?,?,?,?)",
-                        (nomi,kat_id,birlik,kelish,sotish,miqdor,min_m))
+                    # SKU avtomatik — majburiy 4 xonali
+                    sku = f"{sku_keyingi:04d}"
+                    while conn.execute("SELECT id FROM mahsulotlar WHERE sku=?", (sku,)).fetchone():
+                        sku_keyingi += 1
+                        sku = f"{sku_keyingi:04d}"
+                    conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,sku) VALUES (?,?,?,?,?,?,?,?)",
+                        (nomi,kat_id,birlik,kelish,sotish,miqdor,min_m,sku))
+                    sku_keyingi += 1
                     qoshildi += 1
                 conn.commit()
                 return self.send_json({'muvaffaqiyat':True,'qoshildi':qoshildi,'xatolar':xatolar})
@@ -2510,8 +2532,8 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/mahsulotlar/(\d+)$', path)
             if m:
                 eski = conn.execute("SELECT * FROM mahsulotlar WHERE id=?", (m.group(1),)).fetchone()
-                conn.execute("UPDATE mahsulotlar SET nomi=?,kategoriya_id=?,shtrix_kod=?,sku=?,birlik=?,kelish_narxi=?,sotish_narxi=?,miqdor=?,min_miqdor=?,tavsif=?,rasm=?,sotuvda_korinsin=?,brend_id=?,yangilangan=datetime('now','localtime') WHERE id=?",
-                    (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('sku'),body.get('birlik','dona'),body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'),m.group(1)))
+                conn.execute("UPDATE mahsulotlar SET nomi=?,kategoriya_id=?,shtrix_kod=?,sku=?,birlik=?,kelish_narxi=?,sotish_narxi=?,miqdor=?,min_miqdor=?,tavsif=?,rasm=?,sotuvda_korinsin=?,brend_id=?,minus_sotish=?,yangilangan=datetime('now','localtime') WHERE id=?",
+                    (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('sku'),body.get('birlik','dona'),body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'),body.get('minus_sotish',0),m.group(1)))
                 # LOG: mahsulot tahrirlandi
                 foydalanuvchi_id = body.get('foydalanuvchi_id')
                 fism = ''
@@ -2574,8 +2596,8 @@ O'zbek tilida batafsil javob ber."""
             m = re.match(r'^/api/mahsulotlar/(\d+)$', path)
             if m:
                 row = conn.execute("SELECT miqdor,nomi,birlik,sotish_narxi FROM mahsulotlar WHERE id=?", (m.group(1),)).fetchone()
-                if row and row['miqdor'] > 0:
-                    return self.send_error_json(f"'{row['nomi']}' mahsulotini o'chirishdan avval miqdorni 0 ga tushiring! Hozir: {row['miqdor']}")
+                if row and row['miqdor'] != 0:
+                    return self.send_error_json(f"'{row['nomi']}' qoldig'i 0 emas ({row['miqdor']})! O'chirishdan avval qoldiqni 0 ga tushiring.")
                 # LOG: mahsulot o'chirildi
                 if row:
                     conn.execute("INSERT INTO mahsulot_logi (amal,mahsulot_id,mahsulot_nomi,birlik,sotish_narxi,miqdor,izoh) VALUES (?,?,?,?,?,?,?)",

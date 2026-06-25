@@ -646,7 +646,7 @@ function kassaMahsulotKorsatish(royxat) {
   const grid = document.getElementById('kassaMahsulotGrid');
   if (!royxat.length) { grid.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>Topilmadi</p></div>'; return; }
   grid.innerHTML = royxat.map(m => `
-    <div class="mahsulot-karta ${m.miqdor<=0?'kam':''}" onclick="${m.miqdor>0?`chekGaQosh(${m.id})`:''}">
+    <div class="mahsulot-karta ${m.miqdor<=0?'kam':''}" onclick="${(m.miqdor>0||m.minus_sotish)?`chekGaQosh(${m.id})`:''}">
       <!-- RASM -->
       <div style="width:100%;height:100px;border-radius:8px;overflow:hidden;margin-bottom:8px;
         background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -666,10 +666,12 @@ function kassaMahsulotKorsatish(royxat) {
         <div class="miqdor" style="font-size:11px;color:#64748b">
           ${m.miqdor > 0
             ? `<span style="color:#10b981">✓</span> ${m.miqdor} ${m.birlik}`
-            : `<span style="color:#ef4444">⚠ Tugagan</span>`}
+            : m.minus_sotish
+              ? `<span style="color:#f97316">⊖ ${m.miqdor} (minusga)</span>`
+              : `<span style="color:#ef4444">⚠ Tugagan</span>`}
         </div>
-        ${m.miqdor > 0
-          ? `<div style="width:24px;height:24px;border-radius:50%;background:#2563eb;
+        ${(m.miqdor > 0 || m.minus_sotish)
+          ? `<div style="width:24px;height:24px;border-radius:50%;background:${m.miqdor>0?'#2563eb':'#f97316'};
               display:flex;align-items:center;justify-content:center">
               <i class="fas fa-plus" style="color:white;font-size:10px"></i>
             </div>`
@@ -684,8 +686,8 @@ function kassaMahsulotJadvalKorsatish(royxat) {
   grid.innerHTML = `<div class="table-wrapper"><table>
     <thead><tr><th>Rasm</th><th>Nomi</th><th>Narxi</th><th>Mavjud</th><th></th></tr></thead>
     <tbody>${royxat.map(m => `
-      <tr style="${m.miqdor>0?'cursor:pointer':'opacity:0.6'}"
-        ${m.miqdor>0?`onclick="chekGaQosh(${m.id})"
+      <tr style="${(m.miqdor>0||m.minus_sotish)?'cursor:pointer':'opacity:0.6'}"
+        ${(m.miqdor>0||m.minus_sotish)?`onclick="chekGaQosh(${m.id})"
           onmouseover="this.style.background='#f0f9ff'"
           onmouseout="this.style.background=''"`:''}>
         <td>
@@ -705,10 +707,12 @@ function kassaMahsulotJadvalKorsatish(royxat) {
         <td>
           ${m.miqdor > 0
             ? `<span style="color:#10b981;font-weight:600">${m.miqdor} ${m.birlik}</span>`
-            : `<span style="color:#ef4444;font-size:12px">Tugagan</span>`}
+            : m.minus_sotish
+              ? `<span style="color:#f97316;font-size:12px">${m.miqdor} (minusga)</span>`
+              : `<span style="color:#ef4444;font-size:12px">Tugagan</span>`}
         </td>
         <td>
-          <button class="btn btn-primary btn-sm btn-icon" ${m.miqdor<=0?'disabled':''}>
+          <button class="btn btn-primary btn-sm btn-icon" ${(m.miqdor<=0&&!m.minus_sotish)?'disabled':''}>
             <i class="fas fa-plus"></i>
           </button>
         </td>
@@ -718,14 +722,17 @@ function kassaMahsulotJadvalKorsatish(royxat) {
 
 function chekGaQosh(mahsulot_id) {
   const m = kassaMahsulotlar.find(x => x.id == mahsulot_id);
-  if (!m || m.miqdor <= 0) { toast('Bu mahsulot omborda tugagan!', 'warning'); return; }
+  if (!m) return;
+  // minus_sotish=1 bo'lsa qoldiq tugagan bo'lsa ham sotish mumkin
+  if (m.miqdor <= 0 && !m.minus_sotish) { toast('Bu mahsulot omborda tugagan!', 'warning'); return; }
   const mavjud = chekMahsulotlar.find(x => x.mahsulot_id == mahsulot_id);
   if (mavjud) {
-    if (mavjud.miqdor >= m.miqdor) { toast('Omborda yetarli emas!', 'warning'); return; }
+    if (mavjud.miqdor >= m.miqdor && !m.minus_sotish) { toast('Omborda yetarli emas!', 'warning'); return; }
     mavjud.miqdor += 1;
   } else {
     chekMahsulotlar.push({mahsulot_id:m.id, nomi:m.nomi, narxi:m.sotish_narxi,
-      asl_narx:m.sotish_narxi, miqdor:1, birlik:m.birlik, max:m.miqdor, rasm:m.rasm||null,
+      asl_narx:m.sotish_narxi, miqdor:1, birlik:m.birlik,
+      max:m.minus_sotish ? 999999 : m.miqdor, rasm:m.rasm||null,
       chegirma_foiz:0, chegirma_som:0});
   }
   chekKorsatish();

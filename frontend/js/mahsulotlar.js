@@ -610,11 +610,52 @@ function mahsulotFormKontent(m = null) {
         </div>
       </div>
 
+      <!-- MINUSGA SOTISH TOGGLE -->
+      <div class="form-group">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          padding:12px 16px;background:#fff7ed;border-radius:10px;border:1px solid #fed7aa">
+          <div>
+            <div style="font-weight:600;font-size:14px">
+              <i class="fas fa-minus-circle" style="color:#f97316;margin-right:6px"></i>
+              Minusga sotishga ruxsat
+            </div>
+            <div style="font-size:12px;color:#92400e;margin-top:2px">
+              Qoldiq tugagach ham sotiladi (qoldiq -3 bo'lib, kirimda avtomatik to'g'rilanadi)
+            </div>
+          </div>
+          <label style="position:relative;display:inline-block;width:52px;height:28px;cursor:pointer">
+            <input type="checkbox" name="minus_sotish" id="minusSotish"
+              ${m && m.minus_sotish ? 'checked' : ''}
+              style="opacity:0;width:0;height:0"
+              onchange="toggleMinusRang(this)">
+            <span id="minusSpan" style="position:absolute;top:0;left:0;right:0;bottom:0;
+              border-radius:34px;transition:0.3s;
+              background:${m && m.minus_sotish ? '#f97316' : '#e2e8f0'}">
+              <span style="position:absolute;height:20px;width:20px;left:${m && m.minus_sotish ? '28px' : '4px'};
+                bottom:4px;background:white;border-radius:50%;transition:0.3s;
+                box-shadow:0 1px 3px rgba(0,0,0,0.3)" id="minusCircle"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+
       <div class="modal-footer" style="padding:0;margin-top:10px">
         <button type="button" class="btn btn-secondary" onclick="modalYop()">Bekor</button>
         <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Saqlash</button>
       </div>
     </form>`;
+}
+
+function toggleMinusRang(chk) {
+  const span = document.getElementById('minusSpan');
+  const circle = document.getElementById('minusCircle');
+  if (chk.checked) {
+    span.style.background = '#f97316';
+    circle.style.left = '28px';
+  } else {
+    span.style.background = '#e2e8f0';
+    circle.style.left = '4px';
+  }
 }
 
 async function mahsulotSaqlash(e, id) {
@@ -633,6 +674,7 @@ async function mahsulotSaqlash(e, id) {
     tavsif: form.tavsif.value,
     rasm: document.getElementById('rasmInput')?.value || null,
     sotuvda_korinsin: form.sotuvda_korinsin?.checked ? 1 : 0,
+    minus_sotish: form.minus_sotish?.checked ? 1 : 0,
     brend_id: form.brend_id?.value || null,
     foydalanuvchi_id: joriyFoydalanuvchi?.id || null
   };
@@ -676,10 +718,13 @@ async function tanlanganMahsulotOchir() {
   if (!tanlangan.length) { toast('Mahsulot tanlanmagan!', 'warning'); return; }
   const idlar = tanlangan.map(c => parseInt(c.value));
 
-  tasdiqlash(`${idlar.length} ta mahsulotni o'chirasizmi?`, async () => {
+  tasdiqlash(`${idlar.length} ta mahsulotni o'chirasizmi?\n(Faqat qoldig'i 0 bo'lganlar o'chiriladi)`, async () => {
     try {
       const r = await apiPost('/mahsulotlar/kop_ochir', { idlar });
       toast(`✅ ${r.ochirildi} ta mahsulot o'chirildi!`, 'success');
+      if (r.otkazildi && r.otkazildi.length) {
+        setTimeout(() => toast(`⚠️ ${r.otkazildi.length} ta o'tkazildi (qoldig'i 0 emas)`, 'warning'), 2500);
+      }
       mahsulotlarTabYukla();
     } catch(e) { toast(e.message, 'error'); }
   });
