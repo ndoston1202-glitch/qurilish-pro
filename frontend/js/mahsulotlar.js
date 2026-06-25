@@ -792,6 +792,7 @@ async function kopEtiketkaChiqar(mahsulotIdlar, shablon_id) {
           const sozQiymat = JSON.parse(localStorage.getItem('dokoni_sozlamalar') || '{}');
           const qiymat = {
             mahsulot_nomi: m.nomi, narxi: formatSum(m.sotish_narxi),
+            narxi_qisqa: String(m.sotish_narxi).replace(/\B(?=(\d{3})+(?!\d))/g, ' '),
             shtrix_kod: m.shtrix_kod || m.sku || '', sku: m.sku || '',
             kategoriya: m.kategoriya_nomi || '', birlik: m.birlik,
             kompaniya: sozQiymat.chek_dokoni_nomi || "Qurilish Do'koni",

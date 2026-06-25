@@ -280,6 +280,7 @@ function eMatnQiymat(el) {
   const map = {
     'mahsulot_nomi': m.nomi,
     'narxi': formatSum(m.sotish_narxi),
+    'narxi_qisqa': String(m.sotish_narxi).replace(/\B(?=(\d{3})+(?!\d))/g, ' '),
     'shtrix_kod': m.shtrix_kod || m.sku || '',
     'sku': m.sku || '',
     'kategoriya': m.kategoriya_nomi || '',
@@ -379,7 +380,8 @@ function eElementOchir() {
 // ===== ELEMENT SOZLAMALARI PANELI =====
 const E_MAYDONLAR = [
   {v:'mahsulot_nomi', n:'Mahsulot nomi'},
-  {v:'narxi',         n:'Narxi'},
+  {v:'narxi',         n:'Narxi (so\'m bilan)'},
+  {v:'narxi_qisqa',   n:'Narxi (qisqa, so\'msiz)'},
   {v:'shtrix_kod',    n:'Shtrix-kod'},
   {v:'sku',           n:'SKU kodi'},
   {v:'kategoriya',    n:'Kategoriya'},
@@ -720,37 +722,37 @@ const ETIKETKA_TAYYOR = {
   '58x30': {
     nomi: 'Etiketka 58×30', uzunlik: 58, balandlik: 30,
     elementlar: [
-      { tur:'matn', x:2, y:1.5, kenglik:54, balandlik:6, maydon:'mahsulot_nomi', shrift_olchami:9, qalin:true, hizalash:'center', rang:'#000000' },
-      { tur:'matn', x:2, y:8.5, kenglik:30, balandlik:4, maydon:'sku', shrift_olchami:7, hizalash:'left', rang:'#000000' },
-      { tur:'shtrixkod', x:2, y:13, kenglik:34, balandlik:14, maydon:'shtrix_kod', shrift_olchami:6 },
-      { tur:'matn', x:37, y:15, kenglik:19, balandlik:10, maydon:'narxi', shrift_olchami:13, qalin:true, hizalash:'right', rang:'#000000' },
+      { tur:'matn', x:2, y:1.5, kenglik:54, balandlik:6, maydon:'mahsulot_nomi', shrift_olchami:8, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:2, y:8, kenglik:54, balandlik:4, maydon:'sku', shrift_olchami:6, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:2, y:12.5, kenglik:34, balandlik:15, maydon:'shtrix_kod', shrift_olchami:6 },
+      { tur:'matn', x:37, y:16, kenglik:20, balandlik:9, maydon:'narxi_qisqa', shrift_olchami:9, qalin:true, hizalash:'center', rang:'#000000' },
     ]
   },
   '58x40': {
     nomi: 'Etiketka 58×40', uzunlik: 58, balandlik: 40,
     elementlar: [
       { tur:'matn', x:2, y:2, kenglik:54, balandlik:7, maydon:'mahsulot_nomi', shrift_olchami:10, qalin:true, hizalash:'center', rang:'#000000' },
-      { tur:'matn', x:2, y:10, kenglik:54, balandlik:5, maydon:'sku', shrift_olchami:8, hizalash:'center', rang:'#000000' },
-      { tur:'shtrixkod', x:2, y:16, kenglik:54, balandlik:14, maydon:'shtrix_kod', shrift_olchami:7 },
-      { tur:'matn', x:2, y:31, kenglik:54, balandlik:8, maydon:'narxi', shrift_olchami:15, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:2, y:10, kenglik:54, balandlik:5, maydon:'sku', shrift_olchami:7, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:2, y:16, kenglik:54, balandlik:13, maydon:'shtrix_kod', shrift_olchami:7 },
+      { tur:'matn', x:2, y:30, kenglik:54, balandlik:9, maydon:'narxi_qisqa', shrift_olchami:12, qalin:true, hizalash:'center', rang:'#000000' },
     ]
   },
   '30x40': {
     nomi: 'Etiketka 30×40', uzunlik: 30, balandlik: 40,
     elementlar: [
-      { tur:'matn', x:1, y:2, kenglik:28, balandlik:8, maydon:'mahsulot_nomi', shrift_olchami:8, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:2, kenglik:28, balandlik:8, maydon:'mahsulot_nomi', shrift_olchami:7, qalin:true, hizalash:'center', rang:'#000000' },
       { tur:'matn', x:1, y:11, kenglik:28, balandlik:4, maydon:'sku', shrift_olchami:6, hizalash:'center', rang:'#000000' },
       { tur:'shtrixkod', x:1, y:16, kenglik:28, balandlik:13, maydon:'shtrix_kod', shrift_olchami:6 },
-      { tur:'matn', x:1, y:31, kenglik:28, balandlik:7, maydon:'narxi', shrift_olchami:12, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:30, kenglik:28, balandlik:8, maydon:'narxi_qisqa', shrift_olchami:10, qalin:true, hizalash:'center', rang:'#000000' },
     ]
   },
   '20x30': {
     nomi: 'Etiketka 20×30', uzunlik: 20, balandlik: 30,
     elementlar: [
-      { tur:'matn', x:1, y:1, kenglik:18, balandlik:6, maydon:'mahsulot_nomi', shrift_olchami:6, qalin:true, hizalash:'center', rang:'#000000' },
-      { tur:'matn', x:1, y:7.5, kenglik:18, balandlik:3, maydon:'sku', shrift_olchami:5, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:1, kenglik:18, balandlik:5, maydon:'mahsulot_nomi', shrift_olchami:5, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:7, kenglik:18, balandlik:3, maydon:'sku', shrift_olchami:4, hizalash:'center', rang:'#000000' },
       { tur:'shtrixkod', x:1, y:11, kenglik:18, balandlik:10, maydon:'shtrix_kod', shrift_olchami:5 },
-      { tur:'matn', x:1, y:22, kenglik:18, balandlik:6, maydon:'narxi', shrift_olchami:9, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:22, kenglik:18, balandlik:6, maydon:'narxi_qisqa', shrift_olchami:8, qalin:true, hizalash:'center', rang:'#000000' },
     ]
   },
 };

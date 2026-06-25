@@ -519,37 +519,42 @@ def init_db():
     try:
         tayyor = {
             '58×30 (tayyor)': (58, 30, [
-                {'tur':'matn','x':2,'y':1.5,'kenglik':54,'balandlik':6,'maydon':'mahsulot_nomi','shrift_olchami':9,'qalin':True,'hizalash':'center','rang':'#000000'},
-                {'tur':'matn','x':2,'y':8.5,'kenglik':30,'balandlik':4,'maydon':'sku','shrift_olchami':7,'hizalash':'left','rang':'#000000'},
-                {'tur':'shtrixkod','x':2,'y':13,'kenglik':34,'balandlik':14,'maydon':'shtrix_kod','shrift_olchami':6},
-                {'tur':'matn','x':37,'y':15,'kenglik':19,'balandlik':10,'maydon':'narxi','shrift_olchami':13,'qalin':True,'hizalash':'right','rang':'#000000'},
+                {'tur':'matn','x':2,'y':1.5,'kenglik':54,'balandlik':6,'maydon':'mahsulot_nomi','shrift_olchami':8,'qalin':True,'hizalash':'center','rang':'#000000'},
+                {'tur':'matn','x':2,'y':8,'kenglik':54,'balandlik':4,'maydon':'sku','shrift_olchami':6,'hizalash':'center','rang':'#000000'},
+                {'tur':'shtrixkod','x':2,'y':12.5,'kenglik':34,'balandlik':15,'maydon':'shtrix_kod','shrift_olchami':6},
+                {'tur':'matn','x':37,'y':16,'kenglik':20,'balandlik':9,'maydon':'narxi_qisqa','shrift_olchami':9,'qalin':True,'hizalash':'center','rang':'#000000'},
             ]),
             '58×40 (tayyor)': (58, 40, [
                 {'tur':'matn','x':2,'y':2,'kenglik':54,'balandlik':7,'maydon':'mahsulot_nomi','shrift_olchami':10,'qalin':True,'hizalash':'center','rang':'#000000'},
-                {'tur':'matn','x':2,'y':10,'kenglik':54,'balandlik':5,'maydon':'sku','shrift_olchami':8,'hizalash':'center','rang':'#000000'},
-                {'tur':'shtrixkod','x':2,'y':16,'kenglik':54,'balandlik':14,'maydon':'shtrix_kod','shrift_olchami':7},
-                {'tur':'matn','x':2,'y':31,'kenglik':54,'balandlik':8,'maydon':'narxi','shrift_olchami':15,'qalin':True,'hizalash':'center','rang':'#000000'},
+                {'tur':'matn','x':2,'y':10,'kenglik':54,'balandlik':5,'maydon':'sku','shrift_olchami':7,'hizalash':'center','rang':'#000000'},
+                {'tur':'shtrixkod','x':2,'y':16,'kenglik':54,'balandlik':13,'maydon':'shtrix_kod','shrift_olchami':7},
+                {'tur':'matn','x':2,'y':30,'kenglik':54,'balandlik':9,'maydon':'narxi_qisqa','shrift_olchami':12,'qalin':True,'hizalash':'center','rang':'#000000'},
             ]),
             '30×40 (tayyor)': (30, 40, [
-                {'tur':'matn','x':1,'y':2,'kenglik':28,'balandlik':8,'maydon':'mahsulot_nomi','shrift_olchami':8,'qalin':True,'hizalash':'center','rang':'#000000'},
+                {'tur':'matn','x':1,'y':2,'kenglik':28,'balandlik':8,'maydon':'mahsulot_nomi','shrift_olchami':7,'qalin':True,'hizalash':'center','rang':'#000000'},
                 {'tur':'matn','x':1,'y':11,'kenglik':28,'balandlik':4,'maydon':'sku','shrift_olchami':6,'hizalash':'center','rang':'#000000'},
                 {'tur':'shtrixkod','x':1,'y':16,'kenglik':28,'balandlik':13,'maydon':'shtrix_kod','shrift_olchami':6},
-                {'tur':'matn','x':1,'y':31,'kenglik':28,'balandlik':7,'maydon':'narxi','shrift_olchami':12,'qalin':True,'hizalash':'center','rang':'#000000'},
+                {'tur':'matn','x':1,'y':30,'kenglik':28,'balandlik':8,'maydon':'narxi_qisqa','shrift_olchami':10,'qalin':True,'hizalash':'center','rang':'#000000'},
             ]),
             '20×30 (tayyor)': (20, 30, [
-                {'tur':'matn','x':1,'y':1,'kenglik':18,'balandlik':6,'maydon':'mahsulot_nomi','shrift_olchami':6,'qalin':True,'hizalash':'center','rang':'#000000'},
-                {'tur':'matn','x':1,'y':7.5,'kenglik':18,'balandlik':3,'maydon':'sku','shrift_olchami':5,'hizalash':'center','rang':'#000000'},
+                {'tur':'matn','x':1,'y':1,'kenglik':18,'balandlik':5,'maydon':'mahsulot_nomi','shrift_olchami':5,'qalin':True,'hizalash':'center','rang':'#000000'},
+                {'tur':'matn','x':1,'y':7,'kenglik':18,'balandlik':3,'maydon':'sku','shrift_olchami':4,'hizalash':'center','rang':'#000000'},
                 {'tur':'shtrixkod','x':1,'y':11,'kenglik':18,'balandlik':10,'maydon':'shtrix_kod','shrift_olchami':5},
-                {'tur':'matn','x':1,'y':22,'kenglik':18,'balandlik':6,'maydon':'narxi','shrift_olchami':9,'qalin':True,'hizalash':'center','rang':'#000000'},
+                {'tur':'matn','x':1,'y':22,'kenglik':18,'balandlik':6,'maydon':'narxi_qisqa','shrift_olchami':8,'qalin':True,'hizalash':'center','rang':'#000000'},
             ]),
         }
         for nomi, (uz, bal, els) in tayyor.items():
+            for i, el in enumerate(els):
+                el['id'] = i + 1
+            els_json = json.dumps(els, ensure_ascii=False)
             mavjud = conn.execute("SELECT id FROM etiketka_shablonlar WHERE nomi=?", (nomi,)).fetchone()
-            if not mavjud:
-                for i, el in enumerate(els):
-                    el['id'] = i + 1
+            if mavjud:
+                # Mavjud tayyor shablonni yangilash (yaxshilangan joylashuv)
+                conn.execute("UPDATE etiketka_shablonlar SET uzunlik=?,balandlik=?,elementlar=? WHERE id=?",
+                    (uz, bal, els_json, mavjud['id']))
+            else:
                 conn.execute("INSERT INTO etiketka_shablonlar (nomi,uzunlik,balandlik,elementlar) VALUES (?,?,?,?)",
-                    (nomi, uz, bal, json.dumps(els, ensure_ascii=False)))
+                    (nomi, uz, bal, els_json))
         conn.commit()
     except Exception as e:
         print(f"Etiketka shablon seed xato: {e}")
