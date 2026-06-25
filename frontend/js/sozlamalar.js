@@ -85,7 +85,6 @@ function sozTabAlmashtir(tur, btn) {
     case 'etiketka': sozEtiketkaKorsatish(); break;
     case 'printer': printerSozlamalarKorsatish(); break;
   }
-  }
 }
 
 // ===== 1. CHEK SOZLAMALARI =====

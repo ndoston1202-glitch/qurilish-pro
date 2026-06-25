@@ -1743,7 +1743,42 @@ O'zbek tilida batafsil javob ber."""
                 keyingi = (int(row['sku']) + 1) if row and row['sku'] else 1
                 return self.send_json({'sku': f"{keyingi:04d}"})
 
-            # KASSA HARAKATLARI ro\'yxati — GET
+            # KOMPYUTERGA ULANGAN PRINTERLAR RO'YXATI
+            if path == '/api/printerlar':
+                printerlar = []
+                try:
+                    import subprocess, platform
+                    tizim = platform.system()
+                    if tizim == 'Windows':
+                        # PowerShell orqali printerlar
+                        try:
+                            out = subprocess.check_output(
+                                ['powershell', '-NoProfile', '-Command',
+                                 'Get-Printer | Select-Object -ExpandProperty Name'],
+                                timeout=10, stderr=subprocess.DEVNULL
+                            ).decode('utf-8', errors='ignore')
+                            printerlar = [p.strip() for p in out.splitlines() if p.strip()]
+                        except:
+                            # wmic zaxira usuli
+                            try:
+                                out = subprocess.check_output(
+                                    ['wmic', 'printer', 'get', 'name'],
+                                    timeout=10, stderr=subprocess.DEVNULL
+                                ).decode('utf-8', errors='ignore')
+                                qatorlar = [p.strip() for p in out.splitlines() if p.strip()]
+                                printerlar = [p for p in qatorlar if p.lower() != 'name']
+                            except: pass
+                    else:
+                        # Linux/Mac — lpstat
+                        try:
+                            out = subprocess.check_output(['lpstat', '-a'], timeout=10, stderr=subprocess.DEVNULL).decode('utf-8', errors='ignore')
+                            printerlar = [line.split()[0] for line in out.splitlines() if line.strip()]
+                        except: pass
+                except Exception as e:
+                    pass
+                return self.send_json({'printerlar': printerlar})
+
+            # KOMPYUTERGA ULANGAN PRINTERLAR RO'YXATI tugadi
             if path == '/api/kassa_harakatlari':
                 params = []
                 sql = "SELECT * FROM kassa_harakatlari WHERE 1=1"

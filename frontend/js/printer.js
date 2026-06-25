@@ -15,25 +15,52 @@ function printerSozlamalariniSaqla(data) {
 }
 
 // ===== PRINTER SOZLAMALARI SAHIFASI =====
-function printerSozlamalarKorsatish() {
+async function printerSozlamalarKorsatish() {
   const soz = printerSozlamalariniOl();
+  // Avval kompyuter printerlarini yuklash
+  let printerlar = [];
+  document.getElementById('sozKontent').innerHTML = `<div style="text-align:center;padding:40px">
+    <i class="fas fa-spinner fa-spin fa-2x" style="color:#2563eb"></i>
+    <p style="margin-top:10px;color:#64748b">Printerlar qidirilmoqda...</p></div>`;
+  try {
+    const r = await apiGet('/printerlar');
+    printerlar = r.printerlar || [];
+  } catch {}
+
+  // Dropdown HTML — topilgan printerlar
+  const chekPrinterOptions = `
+    <option value="">— Printerni tanlang —</option>
+    ${printerlar.map(p => `<option value="${p}" ${soz.chek_printer===p?'selected':''}>${p}</option>`).join('')}
+    ${soz.chek_printer && !printerlar.includes(soz.chek_printer) ? `<option value="${soz.chek_printer}" selected>${soz.chek_printer} (saqlangan)</option>` : ''}
+  `;
+  const etiketkaPrinterOptions = `
+    <option value="">— Printerni tanlang —</option>
+    ${printerlar.map(p => `<option value="${p}" ${soz.etiketka_printer===p?'selected':''}>${p}</option>`).join('')}
+    ${soz.etiketka_printer && !printerlar.includes(soz.etiketka_printer) ? `<option value="${soz.etiketka_printer}" selected>${soz.etiketka_printer} (saqlangan)</option>` : ''}
+  `;
+
   document.getElementById('sozKontent').innerHTML = `
     <div class="card">
       <div class="card-header">
         <h3><i class="fas fa-print"></i> Printer sozlamalari</h3>
+        <button class="btn btn-secondary btn-sm" onclick="printerSozlamalarKorsatish()">
+          <i class="fas fa-sync"></i> Yangilash
+        </button>
       </div>
       <div class="card-body">
 
-        <!-- MUHIM ESLATMA -->
-        <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;
+        <!-- TOPILGAN PRINTERLAR -->
+        <div style="background:${printerlar.length?'#f0fdf4':'#fffbeb'};
+          border:1px solid ${printerlar.length?'#bbf7d0':'#fcd34d'};border-radius:10px;
           padding:14px;margin-bottom:20px;font-size:13px">
-          <div style="font-weight:700;color:#92400e;margin-bottom:6px">
-            <i class="fas fa-info-circle"></i> Qanday ishlaydi?
+          <div style="font-weight:700;color:${printerlar.length?'#166534':'#92400e'};margin-bottom:6px">
+            <i class="fas fa-${printerlar.length?'check-circle':'info-circle'}"></i>
+            ${printerlar.length ? `${printerlar.length} ta printer topildi` : 'Printer topilmadi'}
           </div>
-          <p style="color:#78350f;line-height:1.6">
-            Chek yoki etiketka chop etishda brauzer print dialog ochiladi.
-            <br>Siz printer nomini bir marta yozing — keyinchalik dialog <b>avtomatik o'sha printerni ko'rsatadi</b>.
-            <br>Faqat <b>Enter</b> yoki <b>Chop etish</b> tugmasini bosing.
+          <p style="color:${printerlar.length?'#15803d':'#78350f'};line-height:1.6">
+            ${printerlar.length
+              ? 'Pastdagi ro\'yxatdan kerakli printerni tanlang va saqlang.'
+              : 'Kompyuterga printer ulang yoki "Yangilash" tugmasini bosing. Topilmasa nomini qo\'lda kiriting.'}
           </p>
         </div>
 
@@ -44,10 +71,17 @@ function printerSozlamalarKorsatish() {
             Chek printeri
           </div>
           <div class="form-group" style="margin-bottom:8px">
-            <label style="font-size:12px;color:#64748b">Printer nomi</label>
+            <label style="font-size:12px;color:#64748b">Printerni tanlang</label>
+            <select id="chekPrinterSelect" onchange="document.getElementById('chekPrinterNomi').value=this.value"
+              style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;background:white">
+              ${chekPrinterOptions}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label style="font-size:12px;color:#64748b">Yoki nomini qo'lda kiriting</label>
             <input type="text" id="chekPrinterNomi"
               value="${soz.chek_printer || ''}"
-              placeholder="Masalan: POS-80, EPSON TM-T20, XPrinter"
+              placeholder="Masalan: POS-80, EPSON TM-T20"
               style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px">
           </div>
           <div class="form-row">
@@ -90,10 +124,17 @@ function printerSozlamalarKorsatish() {
             Etiketka printeri
           </div>
           <div class="form-group" style="margin-bottom:8px">
-            <label style="font-size:12px;color:#64748b">Printer nomi</label>
+            <label style="font-size:12px;color:#64748b">Printerni tanlang</label>
+            <select id="etiketkaPrinterSelect" onchange="document.getElementById('etiketkaPrinterNomi').value=this.value"
+              style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;background:white">
+              ${etiketkaPrinterOptions}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label style="font-size:12px;color:#64748b">Yoki nomini qo'lda kiriting</label>
             <input type="text" id="etiketkaPrinterNomi"
               value="${soz.etiketka_printer || ''}"
-              placeholder="Masalan: ZEBRA ZD220, TSC TE200, GODEX"
+              placeholder="Masalan: ZEBRA ZD220, TSC TE200"
               style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px">
           </div>
           <div class="form-row">
@@ -124,19 +165,6 @@ function printerSozlamalarKorsatish() {
         <button class="btn btn-primary" style="width:100%;padding:12px" onclick="printerSozlamalarSaqla()">
           <i class="fas fa-save"></i> Sozlamalarni saqlash
         </button>
-
-        <!-- YO'RIQNOMA -->
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-top:16px">
-          <div style="font-weight:700;font-size:13px;margin-bottom:8px">
-            <i class="fas fa-lightbulb" style="color:#f59e0b"></i> Printer nomini qanday bilaman?
-          </div>
-          <ol style="font-size:12px;color:#475569;line-height:1.8;padding-left:16px">
-            <li>Windows <b>Start</b> → <b>Printerlar va skanerlar</b> oching</li>
-            <li>Printeringiz nomini <b>aynan shu yerga</b> ko'chiring</li>
-            <li><b>Saqlash</b> tugmasini bosing</li>
-            <li>Chek yoki etiketka chiqarayotganda dialog ochilsa — printeringizni tanlang</li>
-          </ol>
-        </div>
 
       </div>
     </div>`;

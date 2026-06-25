@@ -215,7 +215,8 @@ async function kassaYukla() {
             <div class="card-body" style="padding:10px">
               <div class="filter-bar">
                 <input type="text" id="kassaQidiruv" class="search-input"
-                  placeholder="🔍 Nomi, SKU yoki shtrix-kod..." oninput="kassaMahsulotFilter()" style="flex:1">
+                  placeholder="🔍 Nomi, SKU yoki shtrix-kod..." oninput="kassaMahsulotFilter()"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();qidiruvEnter();}" style="flex:1">
                 <select id="kassaKat" class="filter-select" onchange="kassaMahsulotFilter()">
                   <option value="">Barcha kategoriyalar</option>
                 </select>
@@ -352,8 +353,100 @@ async function kassaYukla() {
       }
       if (tanlangan_mijoz) mijozBlokniyaJila();
       tolovQatorlarniBoshlash();
+      skanerniBoshlash();
     }, 0);
   } catch(e) { toast(e.message, 'error'); }
+}
+
+// ===== BARCODE SKANER TIZIMI =====
+let _skanerBuffer = '';
+let _skanerOxirgiVaqt = 0;
+let _skanerYoqilgan = false;
+
+function skanerniBoshlash() {
+  if (_skanerYoqilgan) return; // bir marta o'rnatiladi
+  _skanerYoqilgan = true;
+  document.addEventListener('keydown', skanerKeydown);
+}
+
+function skanerKeydown(e) {
+  // Faqat sotuv sahifasi ochiq bo'lsa ishlasin
+  const grid = document.getElementById('kassaMahsulotGrid');
+  if (!grid) return;
+  // Agar boshqa inputga yozayotgan bo'lsa (chegirma, summa) — skanerni e'tiborsiz qoldirish
+  const aktiv = document.activeElement;
+  const inputDa = aktiv && (aktiv.tagName === 'INPUT' || aktiv.tagName === 'TEXTAREA' || aktiv.tagName === 'SELECT');
+  // qidiruv input bundan mustasno — unda ham skaner ishlasin
+  const qidiruvDa = aktiv && aktiv.id === 'kassaQidiruv';
+  if (inputDa && !qidiruvDa) return;
+
+  const hozir = Date.now();
+  // Skaner tez yozadi (<50ms). Sekin yozilsa — odam, buferni tozala
+  if (hozir - _skanerOxirgiVaqt > 100) _skanerBuffer = '';
+  _skanerOxirgiVaqt = hozir;
+
+  if (e.key === 'Enter') {
+    if (_skanerBuffer.length >= 3) {
+      skanerKodTopildi(_skanerBuffer.trim());
+      _skanerBuffer = '';
+      e.preventDefault();
+    }
+    return;
+  }
+  // Faqat harf/raqamlarni yig'amiz
+  if (e.key.length === 1) {
+    _skanerBuffer += e.key;
+  }
+}
+
+function skanerKodTopildi(kod) {
+  const k = kod.toLowerCase();
+  // Shtrix-kod yoki SKU bo'yicha qidirish
+  const m = kassaMahsulotlar.find(x =>
+    (x.shtrix_kod && x.shtrix_kod.toLowerCase() === k) ||
+    (x.sku && x.sku.toLowerCase() === k)
+  );
+  if (m) {
+    if (m.miqdor > 0 || m.minus_sotish) {
+      chekGaQosh(m.id);
+      toast(`✅ ${m.nomi} qo'shildi`, 'success');
+    } else {
+      toast(`⚠️ ${m.nomi} omborda tugagan!`, 'warning');
+    }
+    // Qidiruvni tozalash
+    const qi = document.getElementById('kassaQidiruv');
+    if (qi) { qi.value = ''; kassaMahsulotFilter(); }
+  } else {
+    toast(`❌ Kod topilmadi: ${kod}`, 'warning');
+  }
+}
+
+// Qidiruv qutisida Enter — aniq mos yoki birinchi mahsulotni qo'shish
+function qidiruvEnter() {
+  const q = (document.getElementById('kassaQidiruv')?.value || '').trim().toLowerCase();
+  if (!q) return;
+  // Avval aniq SKU/shtrix mos
+  let m = kassaMahsulotlar.find(x =>
+    (x.sku && x.sku.toLowerCase() === q) ||
+    (x.shtrix_kod && x.shtrix_kod.toLowerCase() === q));
+  // Bo'lmasa — filtrlangan birinchi mahsulot
+  if (!m) {
+    const kat = document.getElementById('kassaKat')?.value || '';
+    m = kassaMahsulotlar.find(x =>
+      (x.nomi.toLowerCase().includes(q) || (x.shtrix_kod||'').toLowerCase().includes(q) || (x.sku||'').toLowerCase().includes(q))
+      && (!kat || x.kategoriya_id == kat));
+  }
+  if (m) {
+    if (m.miqdor > 0 || m.minus_sotish) {
+      chekGaQosh(m.id);
+      const qi = document.getElementById('kassaQidiruv');
+      if (qi) { qi.value = ''; kassaMahsulotFilter(); }
+    } else {
+      toast(`⚠️ ${m.nomi} omborda tugagan!`, 'warning');
+    }
+  } else {
+    toast('❌ Mahsulot topilmadi', 'warning');
+  }
 }
 // ===== ARALASH TO'LOV TIZIMI =====
 let tolovQatorlarData = [];
@@ -746,7 +839,7 @@ function chekKorsatish() {
   const div = document.getElementById('chekItems');
   if (!div) return;
   if (!chekMahsulotlar.length) {
-    div.innerHTML = '<div class="empty-state" style="padding:30px"><i class="fas fa-shopping-cart"></i><p>Mahsulot tanlang</p></div>';
+    div.innerHTML = '<div class="empty-state" style="padding:30px;cursor:pointer" onclick="document.getElementById(\'kassaQidiruv\')?.focus()"><i class="fas fa-barcode"></i><p>Mahsulot tanlang yoki skaner qiling</p><p style="font-size:11px;color:#94a3b8">📷 Shtrix-kod/SKU skaneri tayyor</p></div>';
     chekHisoba(); return;
   }
   div.innerHTML = chekMahsulotlar.map((m,i) => {
