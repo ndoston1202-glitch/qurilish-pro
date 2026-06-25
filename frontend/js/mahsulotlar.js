@@ -419,6 +419,16 @@ function sahifaOtIndex(n) {
 function mahsulotQosh() {
   modalOch('Yangi mahsulot qo\'shish', mahsulotFormKontent());
   setTimeout(() => brendSelectYukla(null), 50);
+  // Keyingi SKU ni ko'rsatish
+  apiGet('/sku_keyingi').then(r => {
+    const inp = document.getElementById('skuInput');
+    if (inp && r.sku) {
+      inp.value = r.sku;
+      inp.style.color = '#6d28d9';
+      inp.style.fontWeight = '700';
+      inp.style.fontStyle = 'normal';
+    }
+  }).catch(()=>{});
 }
 
 async function mahsulotTahrir(id) {
@@ -529,20 +539,16 @@ function mahsulotFormKontent(m = null) {
         </div>
         <div class="form-group">
           <label><i class="fas fa-hashtag"></i> SKU kodi
-            <span style="font-size:11px;color:#94a3b8;font-weight:normal">(ichki raqam)</span>
+            <span style="font-size:11px;color:#94a3b8;font-weight:normal">(avtomatik)</span>
           </label>
-          <div style="display:flex;gap:4px">
-            <input type="text" name="sku" id="skuInput"
-              value="${m ? (m.sku || '') : ''}"
-              placeholder="Masalan: SKU-001"
-              style="flex:1">
-            <button type="button" class="btn btn-secondary btn-sm"
-              onclick="skuAvtoGenerate()"
-              title="Avtomatik yaratish"
-              style="padding:6px 10px;white-space:nowrap">
-              <i class="fas fa-magic"></i>
-            </button>
-          </div>
+          ${m ? `
+            <input type="text" name="sku" id="skuInput" value="${m.sku || ''}" readonly
+              style="background:#f8fafc;color:#6d28d9;font-weight:700;font-family:monospace">
+          ` : `
+            <input type="text" name="sku" id="skuInput" value="" readonly
+              placeholder="Saqlanganda avtomatik beriladi (0001, 0002...)"
+              style="background:#f8fafc;color:#94a3b8;font-style:italic">
+          `}
         </div>
       </div>
       <div class="form-group">
@@ -670,16 +676,10 @@ async function tanlanganMahsulotOchir() {
   if (!tanlangan.length) { toast('Mahsulot tanlanmagan!', 'warning'); return; }
   const idlar = tanlangan.map(c => parseInt(c.value));
 
-  tasdiqlash(`${idlar.length} ta mahsulotni o'chirasizmi?\n(Faqat miqdori 0 bo'lganlar o'chiriladi)`, async () => {
+  tasdiqlash(`${idlar.length} ta mahsulotni o'chirasizmi?`, async () => {
     try {
       const r = await apiPost('/mahsulotlar/kop_ochir', { idlar });
-      let xabar = `✅ ${r.ochirildi} ta mahsulot o'chirildi!`;
-      toast(xabar, 'success');
-      if (r.otkazildi && r.otkazildi.length) {
-        setTimeout(() => {
-          toast(`⚠️ ${r.otkazildi.length} ta o'tkazildi (miqdori > 0)`, 'warning');
-        }, 2500);
-      }
+      toast(`✅ ${r.ochirildi} ta mahsulot o'chirildi!`, 'success');
       mahsulotlarTabYukla();
     } catch(e) { toast(e.message, 'error'); }
   });

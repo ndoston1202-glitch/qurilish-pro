@@ -1711,6 +1711,12 @@ O'zbek tilida batafsil javob ber."""
                     'ishlaydi': _SYNC_ISHLAYDI[0],
                 })
 
+            # KEYINGI SKU (preview uchun)
+            if path == '/api/sku_keyingi':
+                row = conn.execute("SELECT sku FROM mahsulotlar WHERE sku GLOB '[0-9][0-9][0-9][0-9]' ORDER BY CAST(sku AS INTEGER) DESC LIMIT 1").fetchone()
+                keyingi = (int(row['sku']) + 1) if row and row['sku'] else 1
+                return self.send_json({'sku': f"{keyingi:04d}"})
+
             # KASSA HARAKATLARI ro\'yxati — GET
             if path == '/api/kassa_harakatlari':
                 params = []
@@ -2096,24 +2102,20 @@ O'zbek tilida batafsil javob ber."""
                     conn.commit(); return self.send_json({'muvaffaqiyat':True,'id':r})
                 except Exception as e: return self.send_error_json(str(e))
 
-            # KO'P MAHSULOT O'CHIRISH (faqat miqdor=0)
+            # KO'P MAHSULOT O'CHIRISH (tasdiqlash bilan — miqdordan qat'i nazar)
             if path == '/api/mahsulotlar/kop_ochir':
                 idlar = body.get('idlar', [])
                 if not idlar: return self.send_error_json('Mahsulot tanlanmagan!')
                 ochirildi = 0
-                otkazildi = []
                 for mid in idlar:
                     row = conn.execute("SELECT miqdor,nomi,birlik,sotish_narxi FROM mahsulotlar WHERE id=? AND faol=1", (mid,)).fetchone()
                     if not row: continue
-                    if row['miqdor'] > 0:
-                        otkazildi.append(f"{row['nomi']} (miqdor: {row['miqdor']})")
-                        continue
                     conn.execute("INSERT INTO mahsulot_logi (amal,mahsulot_id,mahsulot_nomi,birlik,sotish_narxi,miqdor,izoh) VALUES (?,?,?,?,?,?,?)",
                         ('ochirildi', mid, row['nomi'], row['birlik'], row['sotish_narxi'], row['miqdor'], "Ko'p o'chirish"))
                     conn.execute("UPDATE mahsulotlar SET faol=0 WHERE id=?", (mid,))
                     ochirildi += 1
                 conn.commit()
-                return self.send_json({'muvaffaqiyat':True, 'ochirildi':ochirildi, 'otkazildi':otkazildi})
+                return self.send_json({'muvaffaqiyat':True, 'ochirildi':ochirildi, 'otkazildi':[]})
 
             # KO'P MIJOZ O'CHIRISH (faqat qarzi 0)
             if path == '/api/mijozlar/kop_ochir':
@@ -2140,8 +2142,15 @@ O'zbek tilida batafsil javob ber."""
                 try:
                     mavjud = conn.execute("SELECT id FROM mahsulotlar WHERE LOWER(nomi)=LOWER(?) AND faol=1", (body['nomi'],)).fetchone()
                     if mavjud: return self.send_error_json(f"'{body['nomi']}' nomli mahsulot allaqachon mavjud!")
+                    # SKU har doim avtomatik — 4 xonali ketma-ket (0001, 0002...)
+                    row = conn.execute("SELECT sku FROM mahsulotlar WHERE sku GLOB '[0-9][0-9][0-9][0-9]' ORDER BY CAST(sku AS INTEGER) DESC LIMIT 1").fetchone()
+                    keyingi = (int(row['sku']) + 1) if row and row['sku'] else 1
+                    sku = f"{keyingi:04d}"
+                    while conn.execute("SELECT id FROM mahsulotlar WHERE sku=?", (sku,)).fetchone():
+                        keyingi += 1
+                        sku = f"{keyingi:04d}"
                     r = conn.execute("INSERT INTO mahsulotlar (nomi,kategoriya_id,shtrix_kod,sku,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,tavsif,rasm,sotuvda_korinsin,brend_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),body.get('sku'),body.get('birlik','dona'),
+                        (body['nomi'],body.get('kategoriya_id'),body.get('shtrix_kod'),sku,body.get('birlik','dona'),
                          body.get('kelish_narxi',0),body.get('sotish_narxi',0),body.get('miqdor',0),body.get('min_miqdor',5),body.get('tavsif',''),body.get('rasm'),body.get('sotuvda_korinsin',1),body.get('brend_id'))).lastrowid
                     # LOG: mahsulot qo'shildi
                     foydalanuvchi_id = body.get('foydalanuvchi_id')
@@ -2157,11 +2166,12 @@ O'zbek tilida batafsil javob ber."""
                     tg_yuborish_bg(
                         f"Yangi mahsulot qoshildi\n"
                         f"Nomi: {body['nomi']}\n"
+                        f"SKU: {sku}\n"
                         f"Miqdor: {body.get('miqdor',0)} {body.get('birlik','dona')}\n"
                         f"Sotish narxi: {int(body.get('sotish_narxi',0)):,} som\n".replace(',', ' ') +
                         f"Vaqt: {datetime.now().strftime('%H:%M:%S')}"
                     )
-                    return self.send_json({'muvaffaqiyat':True,'id':r})
+                    return self.send_json({'muvaffaqiyat':True,'id':r,'sku':sku})
                 except Exception as e: return self.send_error_json(str(e))
 
             if path == '/api/sotuvlar':

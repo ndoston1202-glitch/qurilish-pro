@@ -215,7 +215,7 @@ async function kassaYukla() {
             <div class="card-body" style="padding:10px">
               <div class="filter-bar">
                 <input type="text" id="kassaQidiruv" class="search-input"
-                  placeholder="🔍 Mahsulot qidirish..." oninput="kassaMahsulotFilter()" style="flex:1">
+                  placeholder="🔍 Nomi, SKU yoki shtrix-kod..." oninput="kassaMahsulotFilter()" style="flex:1">
                 <select id="kassaKat" class="filter-select" onchange="kassaMahsulotFilter()">
                   <option value="">Barcha kategoriyalar</option>
                 </select>
@@ -624,7 +624,9 @@ function kassaMahsulotFilter() {
   const q = document.getElementById('kassaQidiruv').value.toLowerCase();
   const kat = document.getElementById('kassaKat').value;
   const f = kassaMahsulotlar.filter(m => {
-    return (m.nomi.toLowerCase().includes(q) || (m.shtrix_kod||'').includes(q))
+    return (m.nomi.toLowerCase().includes(q)
+        || (m.shtrix_kod||'').toLowerCase().includes(q)
+        || (m.sku||'').toLowerCase().includes(q))
       && (!kat || m.kategoriya_id == kat);
   });
   _kassaJadvalKorinish ? kassaMahsulotJadvalKorsatish(f) : kassaMahsulotKorsatish(f);
