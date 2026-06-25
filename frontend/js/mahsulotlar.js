@@ -1056,6 +1056,7 @@ function mahsulotlarExcelImport() {
         </div>
         <p style="font-size:13px;color:#3b82f6;margin-bottom:8px">
           Shablon faylni yuklab oling, ma'lumotlarni to'ldiring va qayta yuklang.
+          <br><b>SKU ustunini bo'sh qoldiring</b> — dastur avtomatik to'ldiradi (0001, 0002...).
         </p>
         <button class="btn btn-primary btn-sm" onclick="mahsulotShablonYukla()">
           <i class="fas fa-file-csv"></i> CSV Shablon yuklab olish
@@ -1077,11 +1078,12 @@ function mahsulotlarExcelImport() {
         <label style="font-weight:600">CSV mazmuni (tekshirish yoki qo'lda kiritish):</label>
         <textarea id="mahCSVMatn" rows="7"
           style="width:100%;font-family:monospace;font-size:12px;border:1px solid #e2e8f0;border-radius:8px;padding:8px"
-          placeholder="nomi,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,kategoriya"></textarea>
+          placeholder="sku,nomi,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,kategoriya"></textarea>
       </div>
 
       <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-bottom:10px">
         <b>⚠ Eslatma:</b> Bir xil nomli mahsulotlar o'tkazib yuboriladi (duplikat himoyasi).
+        SKU avtomatik beriladi — bo'sh qoldiring.
       </div>
 
       <div class="modal-footer" style="padding:0">
@@ -1097,11 +1099,11 @@ function mahsulotlarExcelImport() {
 function mahsulotShablonYukla() {
   // Kategoriya nomlarini olish
   const katlar = kategoriyalarRoyxat.map(k => k.nomi).join(' / ');
-  const sarlavha = 'nomi,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,kategoriya';
+  const sarlavha = 'sku,nomi,birlik,kelish_narxi,sotish_narxi,miqdor,min_miqdor,kategoriya';
   const namunaQatorlar = [
-    `Portland tsement M400,qop,85000,95000,100,10,Tsement va qorishmalar`,
-    `Armatura 12mm,m,18000,22000,500,20,Temir va metall`,
-    `G'isht qizil,dona,1200,1500,1000,50,G'isht va bloklar`,
+    `,Portland tsement M400,qop,85000,95000,100,10,Tsement va qorishmalar`,
+    `,Armatura 12mm,m,18000,22000,500,20,Temir va metall`,
+    `,G'isht qizil,dona,1200,1500,1000,50,G'isht va bloklar`,
   ];
   const csvMatn = sarlavha + '\n' + namunaQatorlar.join('\n');
   const blob = new Blob(['\uFEFF' + csvMatn], { type: 'text/csv;charset=utf-8;' });
@@ -1111,7 +1113,7 @@ function mahsulotShablonYukla() {
   a.download = 'mahsulotlar_shablon.csv';
   a.click();
   URL.revokeObjectURL(url);
-  toast('Shablon yuklandi! Excel yoki Notepad da oching.', 'success');
+  toast('Shablon yuklandi! SKU ustunini bo\'sh qoldiring — dastur avtomatik to\'ldiradi.', 'success');
 }
 
 async function mahsulotCSVYukla() {
