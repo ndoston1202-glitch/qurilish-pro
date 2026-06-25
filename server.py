@@ -495,6 +495,26 @@ def init_db():
         conn.commit()
     except: pass
 
+    # v13: SKU si yo'q mahsulotlarga avtomatik 4 xonali SKU berish (backfill)
+    try:
+        # Eng katta mavjud raqamli SKU
+        sku_row = conn.execute("SELECT sku FROM mahsulotlar WHERE sku GLOB '[0-9][0-9][0-9][0-9]' ORDER BY CAST(sku AS INTEGER) DESC LIMIT 1").fetchone()
+        keyingi = (int(sku_row['sku']) + 1) if sku_row and sku_row['sku'] else 1
+        # SKU si bo'sh yoki NULL mahsulotlar
+        boshlar = conn.execute("SELECT id FROM mahsulotlar WHERE (sku IS NULL OR sku='') ORDER BY id").fetchall()
+        for b in boshlar:
+            sku = f"{keyingi:04d}"
+            while conn.execute("SELECT id FROM mahsulotlar WHERE sku=?", (sku,)).fetchone():
+                keyingi += 1
+                sku = f"{keyingi:04d}"
+            conn.execute("UPDATE mahsulotlar SET sku=? WHERE id=?", (sku, b['id']))
+            keyingi += 1
+        if boshlar:
+            conn.commit()
+            print(f"✅ {len(boshlar)} ta mahsulotga SKU berildi")
+    except Exception as e:
+        print(f"SKU backfill xato: {e}")
+
     conn.close()
     print("✅ Database tayyor!")
 

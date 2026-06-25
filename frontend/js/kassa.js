@@ -659,6 +659,7 @@ function kassaMahsulotKorsatish(royxat) {
       ${m.kategoriya_nomi ? `<div style="font-size:10px;color:#94a3b8;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.5px">${m.kategoriya_nomi}</div>` : ''}
       <!-- NOMI -->
       <h4 style="font-size:13px;font-weight:600;line-height:1.3;margin-bottom:4px">${m.nomi}</h4>
+      ${m.sku ? `<div style="font-size:10px;color:#8b5cf6;background:#ede9fe;display:inline-block;padding:1px 6px;border-radius:4px;margin-bottom:4px;font-family:monospace">SKU: ${m.sku}</div>` : ''}
       <!-- NARXI -->
       <div class="narxi" style="font-size:15px;font-weight:700;color:#2563eb">${formatSum(m.sotish_narxi)}</div>
       <!-- MIQDOR -->
