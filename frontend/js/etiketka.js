@@ -186,7 +186,8 @@ function eElementlarKorsatish() {
         font-style:${el.kursiv?'italic':'normal'};
         color:${el.rang||'#000'};
         text-align:${el.hizalash||'left'};
-        width:100%;padding:0 2px;white-space:nowrap;overflow:hidden"
+        width:100%;padding:0 2px;white-space:normal;overflow:hidden;line-height:1.1;
+        display:flex;align-items:center;justify-content:${el.hizalash==='center'?'center':el.hizalash==='right'?'flex-end':'flex-start'};height:100%"
         >${eMatnQiymat(el)}</span>`;
     } else if (el.tur === 'shtrixkod') {
       const kodQiymat = eMatnQiymat(el) || (eJoriyMahsulot ? (eJoriyMahsulot.shtrix_kod || eJoriyMahsulot.sku) : '0000');
@@ -617,8 +618,8 @@ function eChiqarish() {
         font-weight:${el.qalin?'bold':'normal'};
         font-style:${el.kursiv?'italic':'normal'};
         color:${el.rang||'#000'};text-align:${el.hizalash||'left'};
-        overflow:hidden;white-space:nowrap;padding:0 2px;
-        display:flex;align-items:center">${qiymat}</div>`;
+        overflow:hidden;white-space:normal;line-height:1.1;padding:0 2px;
+        display:flex;align-items:center;justify-content:${el.hizalash==='center'?'center':el.hizalash==='right'?'flex-end':'flex-start'}">${qiymat}</div>`;
     if (el.tur === 'shtrixkod') return `
       <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;height:${kh}px;
         display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden">
@@ -722,37 +723,33 @@ const ETIKETKA_TAYYOR = {
   '58x30': {
     nomi: 'Etiketka 58×30', uzunlik: 58, balandlik: 30,
     elementlar: [
-      { tur:'matn', x:2, y:1.5, kenglik:54, balandlik:6, maydon:'mahsulot_nomi', shrift_olchami:8, qalin:true, hizalash:'center', rang:'#000000' },
-      { tur:'matn', x:2, y:8, kenglik:54, balandlik:4, maydon:'sku', shrift_olchami:6, hizalash:'center', rang:'#000000' },
-      { tur:'shtrixkod', x:2, y:12.5, kenglik:34, balandlik:15, maydon:'shtrix_kod', shrift_olchami:6 },
-      { tur:'matn', x:37, y:16, kenglik:20, balandlik:9, maydon:'narxi_qisqa', shrift_olchami:9, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:2, y:1, kenglik:54, balandlik:10, maydon:'mahsulot_nomi', shrift_olchami:9, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:2, y:11, kenglik:54, balandlik:6, maydon:'narxi', shrift_olchami:10, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:2, y:18, kenglik:54, balandlik:11, maydon:'shtrix_kod', shrift_olchami:6 },
     ]
   },
   '58x40': {
     nomi: 'Etiketka 58×40', uzunlik: 58, balandlik: 40,
     elementlar: [
-      { tur:'matn', x:2, y:2, kenglik:54, balandlik:7, maydon:'mahsulot_nomi', shrift_olchami:10, qalin:true, hizalash:'center', rang:'#000000' },
-      { tur:'matn', x:2, y:10, kenglik:54, balandlik:5, maydon:'sku', shrift_olchami:7, hizalash:'center', rang:'#000000' },
-      { tur:'shtrixkod', x:2, y:16, kenglik:54, balandlik:13, maydon:'shtrix_kod', shrift_olchami:7 },
-      { tur:'matn', x:2, y:30, kenglik:54, balandlik:9, maydon:'narxi_qisqa', shrift_olchami:12, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:2, y:2, kenglik:54, balandlik:12, maydon:'mahsulot_nomi', shrift_olchami:11, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:2, y:15, kenglik:54, balandlik:6, maydon:'narxi', shrift_olchami:12, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:2, y:22, kenglik:54, balandlik:16, maydon:'shtrix_kod', shrift_olchami:7 },
     ]
   },
   '30x40': {
     nomi: 'Etiketka 30×40', uzunlik: 30, balandlik: 40,
     elementlar: [
-      { tur:'matn', x:1, y:2, kenglik:28, balandlik:8, maydon:'mahsulot_nomi', shrift_olchami:7, qalin:true, hizalash:'center', rang:'#000000' },
-      { tur:'matn', x:1, y:11, kenglik:28, balandlik:4, maydon:'sku', shrift_olchami:6, hizalash:'center', rang:'#000000' },
-      { tur:'shtrixkod', x:1, y:16, kenglik:28, balandlik:13, maydon:'shtrix_kod', shrift_olchami:6 },
-      { tur:'matn', x:1, y:30, kenglik:28, balandlik:8, maydon:'narxi_qisqa', shrift_olchami:10, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:2, kenglik:28, balandlik:13, maydon:'mahsulot_nomi', shrift_olchami:8, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:16, kenglik:28, balandlik:5, maydon:'narxi', shrift_olchami:9, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:1, y:22, kenglik:28, balandlik:16, maydon:'shtrix_kod', shrift_olchami:6 },
     ]
   },
   '20x30': {
     nomi: 'Etiketka 20×30', uzunlik: 20, balandlik: 30,
     elementlar: [
-      { tur:'matn', x:1, y:1, kenglik:18, balandlik:5, maydon:'mahsulot_nomi', shrift_olchami:5, qalin:true, hizalash:'center', rang:'#000000' },
-      { tur:'matn', x:1, y:7, kenglik:18, balandlik:3, maydon:'sku', shrift_olchami:4, hizalash:'center', rang:'#000000' },
-      { tur:'shtrixkod', x:1, y:11, kenglik:18, balandlik:10, maydon:'shtrix_kod', shrift_olchami:5 },
-      { tur:'matn', x:1, y:22, kenglik:18, balandlik:6, maydon:'narxi_qisqa', shrift_olchami:8, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:1, kenglik:18, balandlik:9, maydon:'mahsulot_nomi', shrift_olchami:6, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'matn', x:1, y:10.5, kenglik:18, balandlik:4, maydon:'narxi', shrift_olchami:6, qalin:true, hizalash:'center', rang:'#000000' },
+      { tur:'shtrixkod', x:1, y:15.5, kenglik:18, balandlik:13, maydon:'shtrix_kod', shrift_olchami:5 },
     ]
   },
 };

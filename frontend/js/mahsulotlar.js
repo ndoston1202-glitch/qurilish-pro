@@ -803,7 +803,7 @@ async function kopEtiketkaChiqar(mahsulotIdlar, shablon_id) {
             <div style="position:absolute;left:${x}px;top:${y}px;width:${kw}px;height:${kh}px;
               font-size:${el.shrift_olchami * 3.78 * 0.7}px;font-weight:${el.qalin?'bold':'normal'};
               font-style:${el.kursiv?'italic':'normal'};color:${el.rang||'#000'};
-              text-align:${el.hizalash||'left'};overflow:hidden;white-space:nowrap;
+              text-align:${el.hizalash||'left'};overflow:hidden;white-space:normal;line-height:1.1;
               display:flex;align-items:center;justify-content:${el.hizalash==='center'?'center':el.hizalash==='right'?'flex-end':'flex-start'};padding:0 2px">${qiymat}</div>`;
           if (el.tur === 'shtrixkod') {
             const kodVal = qiymat || m.shtrix_kod || m.sku || '0000';
