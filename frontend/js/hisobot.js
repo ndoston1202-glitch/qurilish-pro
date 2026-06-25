@@ -314,28 +314,28 @@ async function chekniQaytaChiqar(id) {
     const s = await apiGet('/sotuvlar/'+id);
     const soz = sozlamalarniOl();
     const html = `
-      <div style="font-family:'Courier New',monospace;font-size:12px;padding:8px;width:100%">
-        <h3 style="text-align:center;font-size:14px;margin-bottom:4px">${soz.chek_dokoni_nomi||"Qurilish Do'koni"}</h3>
-        ${soz.chek_manzil?`<div style="text-align:center;font-size:10px">${soz.chek_manzil}</div>`:''}
-        ${soz.chek_telefon?`<div style="text-align:center;font-size:10px">Tel: ${soz.chek_telefon}</div>`:''}
-        <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:3px 0;margin:4px 0;text-align:center">Sotuv cheki</div>
-        <div style="display:flex;justify-content:space-between"><span>Chek:</span><span>${s.chek_raqam}</span></div>
-        <div style="display:flex;justify-content:space-between"><span>Kassir:</span><span>${s.kassir_ismi}</span></div>
-        ${s.mijoz_ismi?`<div style="display:flex;justify-content:space-between"><span>Mijoz:</span><span>${s.mijoz_ismi}</span></div>`:''}
-        <div style="display:flex;justify-content:space-between"><span>Sana:</span><span>${formatSana(s.sana)}</span></div>
-        <div style="border-top:1px dashed #000;margin:4px 0"></div>
+      <div style="font-family:'Courier New',monospace;padding:6px;width:100%">
+        <h3 style="text-align:center;font-size:20px;margin-bottom:4px;font-weight:bold">${soz.chek_dokoni_nomi||"Best Seller"}</h3>
+        ${soz.chek_manzil?`<div style="text-align:center;font-size:13px">${soz.chek_manzil}</div>`:''}
+        ${soz.chek_telefon?`<div style="text-align:center;font-size:13px">Tel: ${soz.chek_telefon}</div>`:''}
+        <div style="border-top:2px dashed #000;border-bottom:2px dashed #000;padding:4px 0;margin:6px 0;text-align:center;font-size:15px;font-weight:bold">SOTUV CHEKI</div>
+        <div style="display:flex;justify-content:space-between;font-size:14px"><span>Chek:</span><span>${s.chek_raqam}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:14px"><span>Kassir:</span><span>${s.kassir_ismi}</span></div>
+        ${s.mijoz_ismi?`<div style="display:flex;justify-content:space-between;font-size:14px"><span>Mijoz:</span><span>${s.mijoz_ismi}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;font-size:14px"><span>Sana:</span><span>${formatSana(s.sana)}</span></div>
+        <div style="border-top:2px dashed #000;margin:6px 0"></div>
         ${s.tafsilotlar.map(t=>`
-          <div>${t.mahsulot_nomi}</div>
-          <div style="display:flex;justify-content:space-between">
-            <span>${t.miqdor} x ${formatSum(t.narxi)}</span><span>${formatSum(t.jami)}</span>
+          <div style="font-size:15px;font-weight:bold;margin-top:4px">${t.mahsulot_nomi}</div>
+          <div style="display:flex;justify-content:space-between;font-size:14px">
+            <span>${t.miqdor} x ${formatSum(t.narxi)}</span><span style="font-weight:bold">${formatSum(t.jami)}</span>
           </div>`).join('')}
-        <div style="border-top:1px dashed #000;margin:4px 0"></div>
-        ${s.chegirma>0?`<div style="display:flex;justify-content:space-between"><span>Chegirma:</span><span>-${formatSum(s.chegirma)}</span></div>`:''}
-        <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px">
+        <div style="border-top:2px dashed #000;margin:6px 0"></div>
+        ${s.chegirma>0?`<div style="display:flex;justify-content:space-between;font-size:14px"><span>Chegirma:</span><span>-${formatSum(s.chegirma)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:19px;margin:4px 0">
           <span>JAMI:</span><span>${formatSum(s.jami_summa)}</span>
         </div>
-        <div style="border-top:1px dashed #000;margin:4px 0"></div>
-        <div style="text-align:center;font-size:10px">${soz.chek_xabar||"Rahmat! Yana keling! 🙏"}</div>
+        <div style="border-top:2px dashed #000;margin:6px 0"></div>
+        <div style="text-align:center;font-size:14px">${soz.chek_xabar||"Rahmat! Yana keling!"}</div>
       </div>`;
 
     if (typeof chekChiqar === 'function') {

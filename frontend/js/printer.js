@@ -112,6 +112,27 @@ async function printerSozlamalarKorsatish() {
               Chek avtomatik chiqsin (dialog ko'rsatmasdan)
             </label>
           </div>
+          <!-- CHEK SHRIFTI -->
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:8px">
+              <label style="font-size:12px;color:#64748b">Shrift o'lchami (px)</label>
+              <select id="chekShrift"
+                style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;background:white">
+                <option value="12" ${(soz.chek_shrift||'15')==='12'?'selected':''}>12 (kichik)</option>
+                <option value="14" ${(soz.chek_shrift||'15')==='14'?'selected':''}>14</option>
+                <option value="15" ${(soz.chek_shrift||'15')==='15'?'selected':''}>15 (o'rtacha)</option>
+                <option value="17" ${(soz.chek_shrift||'15')==='17'?'selected':''}>17 (katta)</option>
+                <option value="20" ${(soz.chek_shrift||'15')==='20'?'selected':''}>20 (juda katta)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:8px;display:flex;align-items:flex-end">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;padding-bottom:10px">
+                <input type="checkbox" id="chekQalin" ${soz.chek_qalin!==false?'checked':''}
+                  style="width:16px;height:16px">
+                Qalin (bold) shrift
+              </label>
+            </div>
+          </div>
           <button class="btn btn-success btn-sm" onclick="printerTestChek()">
             <i class="fas fa-print"></i> Test chek chiqarish
           </button>
@@ -176,6 +197,8 @@ function printerSozlamalarSaqla() {
     chek_kenglik:      document.getElementById('chekKenglik')?.value || '80',
     chek_uzunlik:      document.getElementById('chekUzunlik')?.value || 'auto',
     chek_avtomatic:    document.getElementById('chekAvtomatic')?.checked || false,
+    chek_shrift:       document.getElementById('chekShrift')?.value || '15',
+    chek_qalin:        document.getElementById('chekQalin')?.checked !== false,
     etiketka_printer:  document.getElementById('etiketkaPrinterNomi')?.value?.trim() || '',
     etiketka_olcham:   document.getElementById('etiketkaOlcham')?.value || '58x30',
     etiketka_nusxa:    parseInt(document.getElementById('etiketkaNusxa')?.value) || 1,
@@ -184,74 +207,59 @@ function printerSozlamalarSaqla() {
   toast('✅ Printer sozlamalari saqlandi!', 'success');
 }
 
-// ===== CHEK CHIQARISH FUNKSIYASI =====
+// ===== CHEK CHIQARISH — yashirin iframe orqali (oyna ochilmaydi) =====
 function chekChiqar(html, sarlavha) {
   const soz = printerSozlamalariniOl();
   const kenglik = soz.chek_kenglik || '80';
   const uzunlik = soz.chek_uzunlik || 'auto';
-  const printerNomi = soz.chek_printer || '';
+  const shriftOlcham = soz.chek_shrift || '15';   // px — kattaroq default
+  const qalin = soz.chek_qalin !== false;          // default qalin
 
-  const printWin = window.open('', '_blank',
-    `width=${parseInt(kenglik)*4+50},height=600,menubar=no,toolbar=no,location=no`);
+  // Eski iframe ni o'chirish
+  const eski = document.getElementById('chekPrintFrame');
+  if (eski) eski.remove();
 
-  printWin.document.write(`<!DOCTYPE html><html><head>
+  const iframe = document.createElement('iframe');
+  iframe.id = 'chekPrintFrame';
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head>
     <title>${sarlavha || 'Chek'}</title>
     <style>
       * { margin:0; padding:0; box-sizing:border-box; }
-      @page {
-        size: ${kenglik}mm ${uzunlik};
-        margin: 2mm;
-      }
+      @page { size: ${kenglik}mm ${uzunlik}; margin: 2mm; }
       body {
         font-family: 'Courier New', monospace;
-        font-size: 12px;
+        font-size: ${shriftOlcham}px;
+        font-weight: ${qalin ? 'bold' : 'normal'};
         width: ${kenglik}mm;
         color: #000;
         background: white;
+        line-height: 1.35;
       }
-      .controls {
-        padding: 10px;
-        background: #f1f5f9;
-        border-bottom: 1px solid #e2e8f0;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        flex-wrap: wrap;
-      }
-      .controls button {
-        padding: 6px 16px;
-        border-radius: 6px;
-        border: none;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .print-btn { background: #2563eb; color: white; }
-      .close-btn { background: #e2e8f0; color: #333; }
-      .printer-info { font-size: 12px; color: #64748b; }
-      @media print {
-        .controls { display: none !important; }
-        body { width: ${kenglik}mm; }
-      }
+      .chek-print-qator { display:flex; justify-content:space-between; }
     </style>
-  </head><body>
-    <div class="controls">
-      <button class="print-btn" onclick="window.print()">🖨️ Chop etish</button>
-      <button class="close-btn" onclick="window.close()">✕ Yopish</button>
-      ${printerNomi ? `<span class="printer-info">📠 Printer: <b>${printerNomi}</b></span>` : ''}
-      <span class="printer-info">📄 ${kenglik}mm kenglik</span>
-    </div>
-    ${html}
-  </body></html>`);
+  </head><body>${html}</body></html>`);
+  doc.close();
 
-  printWin.document.close();
-
-  // Avtomatik chiqarish (sozlamadan)
-  if (soz.chek_avtomatic) {
+  // Avtomatik chop etish — oyna ochilmaydi
+  iframe.onload = () => {
     setTimeout(() => {
-      try { printWin.print(); } catch(e) {}
-    }, 500);
-  }
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch(e) {}
+      // Print tugagach iframe ni tozalash
+      setTimeout(() => { try { iframe.remove(); } catch(e){} }, 2000);
+    }, 250);
+  };
+  // ba'zi brauzerlarda onload kechiksa
+  setTimeout(() => {
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e){}
+  }, 600);
 }
 
 // ===== ETIKETKA CHIQARISH FUNKSIYASI =====

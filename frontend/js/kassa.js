@@ -1044,36 +1044,36 @@ function chekChidir(sotuv, snap) {
     </div>`).join('');
 
   const html = `
-    <div style="font-family:'Courier New',monospace;font-size:12px;padding:8px;width:100%">
-      <h3 style="text-align:center;font-size:14px;margin-bottom:4px">${soz.chek_dokoni_nomi||"Qurilish Do'koni"}</h3>
-      ${soz.chek_manzil?`<div style="text-align:center;font-size:10px">${soz.chek_manzil}</div>`:''}
-      ${soz.chek_telefon?`<div style="text-align:center;font-size:10px">Tel: ${soz.chek_telefon}</div>`:''}
-      <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:3px 0;margin:4px 0;text-align:center">Sotuv cheki</div>
-      <div style="display:flex;justify-content:space-between"><span>Chek:</span><span>${sotuv.chek_raqam}</span></div>
-      <div style="display:flex;justify-content:space-between"><span>Kassir:</span><span>${joriyFoydalanuvchi.ism}</span></div>
-      <div style="display:flex;justify-content:space-between"><span>Mijoz:</span><span>${mijozNomi}</span></div>
-      <div style="display:flex;justify-content:space-between"><span>Sana:</span><span>${new Date().toLocaleString('uz-UZ')}</span></div>
-      <div style="border-top:1px dashed #000;margin:4px 0"></div>
+    <div style="font-family:'Courier New',monospace;padding:6px;width:100%">
+      <h3 style="text-align:center;font-size:20px;margin-bottom:4px;font-weight:bold">${soz.chek_dokoni_nomi||"Best Seller"}</h3>
+      ${soz.chek_manzil?`<div style="text-align:center;font-size:13px">${soz.chek_manzil}</div>`:''}
+      ${soz.chek_telefon?`<div style="text-align:center;font-size:13px">Tel: ${soz.chek_telefon}</div>`:''}
+      <div style="border-top:2px dashed #000;border-bottom:2px dashed #000;padding:4px 0;margin:6px 0;text-align:center;font-size:15px;font-weight:bold">SOTUV CHEKI</div>
+      <div style="display:flex;justify-content:space-between;font-size:14px"><span>Chek:</span><span>${sotuv.chek_raqam}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:14px"><span>Kassir:</span><span>${joriyFoydalanuvchi.ism}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:14px"><span>Mijoz:</span><span>${mijozNomi}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:14px"><span>Sana:</span><span>${new Date().toLocaleString('uz-UZ')}</span></div>
+      <div style="border-top:2px dashed #000;margin:6px 0"></div>
       ${snap.mahsulotlar.map(m => {
         const chegirmaFoiz = m.chegirma_foiz || 0;
         const chegirmaSom = m.chegirma_som || 0;
         const chegirmaMatn = chegirmaFoiz > 0 ? ` (-${chegirmaFoiz}%)` : chegirmaSom > 0 ? ` (-${formatSum(chegirmaSom)})` : '';
         return `
-        <div>${m.nomi}</div>
-        <div style="display:flex;justify-content:space-between">
+        <div style="font-size:15px;font-weight:bold;margin-top:4px">${m.nomi}</div>
+        <div style="display:flex;justify-content:space-between;font-size:14px">
           <span>${m.miqdor} x ${formatSum(m.narxi)}${chegirmaMatn}</span>
-          <span>${formatSum(m.narxi*m.miqdor)}</span>
+          <span style="font-weight:bold">${formatSum(m.narxi*m.miqdor)}</span>
         </div>`;
       }).join('')}
-      <div style="border-top:1px dashed #000;margin:4px 0"></div>
-      ${snap.chegirma>0?`<div style="display:flex;justify-content:space-between"><span>Chegirma:</span><span>-${formatSum(snap.chegirma)}</span></div>`:''}
-      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px">
+      <div style="border-top:2px dashed #000;margin:6px 0"></div>
+      ${snap.chegirma>0?`<div style="display:flex;justify-content:space-between;font-size:14px"><span>Chegirma:</span><span>-${formatSum(snap.chegirma)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:19px;margin:4px 0">
         <span>JAMI:</span><span>${formatSum(sotuv.jami_summa)}</span>
       </div>
-      <div style="border-top:1px dashed #000;margin:4px 0"></div>
+      <div style="border-top:2px dashed #000;margin:6px 0"></div>
       ${tolovHtml}
-      <div style="border-top:1px dashed #000;margin:4px 0"></div>
-      <div style="text-align:center;margin-top:6px;font-size:10px">${soz.chek_xabar||"Rahmat! Yana keling! 🙏"}</div>
+      <div style="border-top:2px dashed #000;margin:6px 0"></div>
+      <div style="text-align:center;margin-top:8px;font-size:14px">${soz.chek_xabar||"Rahmat! Yana keling!"}</div>
     </div>`;
 
   // printer.js orqali chiqarish
